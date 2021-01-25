@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Test",
+    "description": "Provoque un test (et oui !)",
+    "cmd": "test",
+    "action": "test",
+    "masked": false,
+    "access": "ADMINISTRATOR"
+  },
+  {
+    "name": "Aide",
+    "description": "affiche l'aide",
+    "cmd": "aide moi",
+    "action": "help",
+    "masked": false,
+    "access": ""
+  },
+  {
+    "name": "Montre mon xp",
+    "description": "Affiche votre xp",
+    "cmd": "montre mon xp stp",
+    "action": "send_m_xp",
+    "masked": false,
+    "access": ""
+  },
+  {
+    "name": "Montre l'xp de @cible",
+    "description": "Affiche l'xp de @cible",
+    "cmd": "montre xp de @cible",
+    "action": "send_xp_of",
+    "masked": false,
+    "access": ""
+  },
+  {
+    "name": "Reset l'xp de @cible",
+    "description": "Remet l'xp de @cible à 0",
+    "cmd": "reset @cible",
+    "action": "xp_reset",
+    "masked": false,
+    "access": "ADMINISTRATOR"
+  },
+  {
+    "name": "Télecharge LIEN_YOUTUBE en FORMAT",
+    "description": "Converti le LIEN_YOUTUBE youtube au FORMAT et revoie un lien de telechargement",
+    "cmd": "download LIEN_YOUTUBE en FORMAT",
+    "action": "download",
+    "masked": false,
+    "access": ""
+  }
+]

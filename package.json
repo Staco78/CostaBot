@@ -1,0 +1,15 @@
+{
+  "name": "costa_bot",
+  "authors": "Staco",
+  "version": "0.1.0",
+  "main": "main.js",
+  "dependencies": {
+    "@nodegui/nodegui": "^0.28.1",
+    "discord.js": "^12.5.1",
+    "ws": "7.4.2",
+    "ytdl-core": "^4.4.5"
+  },
+  "scripts": {
+    "start": "./node_modules/.bin/qode main.js"
+  }
+}
