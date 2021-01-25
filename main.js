@@ -215,16 +215,14 @@ global.download = async (mess) => {
     let info = await ytb.getBasicInfo(args[2]);
     fs.access("./download/" + info.videoDetails.videoId + ".mp4", (err) => {
         if (err) {
-            let downloader = ytb(args[2], { quality: "highestaudio", filter: filter => filter.codecs == "mp4a.40.2"});
-            downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + ".mp4"));
             mess.channel.send("Telechargement commencé...");
+            let downloader = ytb(args[2], { quality: "highestaudio", filter: filter => filter.codecs == "mp4a.40.2" });
+            downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + ".mp4"));
 
         }
-        else {
-            mess.channel.send("Envoi en cours...");
-            let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
-            mess.channel.send(message);
-        }
+        mess.channel.send("Envoi en cours...");
+        let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
+        mess.channel.send(message);
     });
 }
 
