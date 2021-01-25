@@ -40,7 +40,7 @@ function startInterface() {
 //gestion des commandes discord
 bot.on("message", (mess) => {
     global.log("message", mess.author.username, "a dit :", mess.content);
-    // xp add
+    // xp add  
 
     let users;
     fs.readFile("./users.json", (err, data) => {
