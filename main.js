@@ -9,31 +9,31 @@ const commandes = require("./commandes.json");
 const childProcess = require("child_process");
 
 const ytb = require("ytdl-core");
+const WebSocket = require("ws");
+const wss = new WebSocket.Server({ port: config.interface.port });
 
-
-let child;
-
+let WS;
 
 function startInterface() {
-    child = childProcess.fork("./interface.js");
-    child.send(JSON.stringify({ action: "start", uptime: bot.uptime }));
+    // child = childProcess.spawn("cmd.exe", {shell: true} , ["/c", "node_modules\\@nodegui\\qode\\binaries\\qode.exe", "interface.js"]);
+    // child.send(JSON.stringify({ action: "start", uptime: bot.uptime }));
     // global.log("all", bot.uptime);
-    child.on("message", (mess) => {
-        mess = JSON.parse(mess);
-        if (mess.action == "func") {
-            global[mess.func]();
-        }
-        else if (mess.action == "log") {
-            global.log("all", mess.data);
-        }
-    });
-    child.on("error", (err) => {
-        global.log("all", "Interface erreur", err);
-    });
-    child.on("close", (code) => {
-        global.log("all", "Interface ferme avec le code", code);
-        process.exit();
-    });
+    // child.on("message", (mess) => {
+    //     mess = JSON.parse(mess);
+    //     if (mess.action == "func") {
+    //         global[mess.func]();
+    //     }
+    //     else if (mess.action == "log") {
+    //         global.log("all", mess.data);
+    //     }
+    // });
+    // child.on("error", (err) => {
+    //     global.log("all", "Interface erreur", err);
+    // });
+    // child.on("close", (code) => {
+    //     global.log("all", "Interface ferme avec le code", code);
+    //     process.exit();
+    // });
 }
 
 
@@ -79,7 +79,7 @@ bot.on("message", (mess) => {
         m = m.replace("mp3", "FORMAT");
         let args = m.split(" ");
         // global.log(mess.content);
-        global.log("all", m);
+        // global.log("all", m);
         if (args[0].toLowerCase() == config.keyWord) {
             let cmd_find = false;
             commandes.forEach((commande) => {
@@ -132,9 +132,9 @@ global.log = function (type) {
     args.splice(0, 1);
     console.log(args.join(" "));
     try {
-        child.send(JSON.stringify({ action: "addLog", data: args.join(" "), type: type }));
+        WS.send(JSON.stringify({ action: "addLog", data: args.join(" "), type: type }));
     }
-    catch (e) { }
+    catch (e) {console.log("error to send log at interface"); }
 }
 
 global.test = (mess) => {
@@ -227,3 +227,21 @@ global.download = async (mess) => {
 
 global.startBot();
 startInterface();
+
+
+
+//ws
+
+wss.on("connection", (ws) => {
+    WS = ws;
+    ws.send(JSON.stringify({ action: "start", uptime: bot.uptime }));
+    ws.on("message", (data) => {
+        let mess = JSON.parse(data);
+        if (mess.action == "func") {
+            global[mess.func]();
+        }
+        else if (mess.action == "log") {
+            global.log("all", mess.data);
+        }
+    });
+});

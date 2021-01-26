@@ -6,10 +6,13 @@
   "dependencies": {
     "@nodegui/nodegui": "^0.28.1",
     "discord.js": "^12.5.1",
+    "express": "^4.17.1",
+    "request": "^2.88.2",
     "ws": "7.4.2",
     "ytdl-core": "^4.4.5"
   },
   "scripts": {
-    "start": "./node_modules/.bin/qode main.js"
+    "start": "node main.js",
+    "interface": "qode interface.js"
   }
 }

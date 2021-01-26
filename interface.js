@@ -1,5 +1,11 @@
 const { QMainWindow, QPushButton, QBoxLayout, QWidget, Direction, QLabel, QTabWidget, QIcon, FlexLayout, QTextEdit, QListView, QComboBox } = require("@nodegui/nodegui");
 
+const config = require("./config.json");
+
+const WebSocket = require("ws");
+
+let ws = new WebSocket("ws://localhost:" + config.interface.port);
+
 //variables globales
 let logsAll = "";
 let logsMessages = "";
@@ -54,20 +60,21 @@ page1_button.addEventListener("clicked", () => {
     if (page1_button.text() == "Start") {
         send.func = "startBot";
         page1_button.setText("Stop");
-        process.send(JSON.stringify({ action: "log", data: "page1_button a stop" }));
 
     }
     else {
         send.func = "stopBot";
         page1_button.setText("Start");
-        process.send(JSON.stringify({ action: "log", data: "page1_button a start" }));
+        
     }
-    // process.send(JSON.stringify(send));
-    process.send(JSON.stringify({ action: "log", data: JSON.stringify(send) }));
+    ws.send(JSON.stringify(send));
 });
 
-process.on("message", (message) => {
-    message = JSON.parse(message);
+
+//message
+ws.onmessage = (message) => {
+    message = JSON.parse(message.data);
+    console.log(message);
     if (message.action == "start") {
         if (message.uptime == "null") {
             page1_button.setText("Start");
@@ -81,6 +88,7 @@ process.on("message", (message) => {
 
     }
     else if (message.action == "addLog") {
+        console.log("addlog");
         logsAll += message.data + "\n";
         if (message.type == "message") {
             logsMessages += message.data + "\n";
@@ -94,7 +102,7 @@ process.on("message", (message) => {
         page2_textArea_changeText();
     }
     win.show();
-});
+};
 
 page2_comboBox.addEventListener("currentTextChanged", () => {
     page2_textArea_changeText();
