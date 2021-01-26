@@ -3,8 +3,8 @@ const fs = require("fs");
 const Discord = require("discord.js");
 const bot = new Discord.Client();
 
-const config = require("./config.json");
-const commandes = require("./commandes.json");
+const config = require("./data/config.json");
+const commandes = require("./data/commandes.json");
 
 const childProcess = require("child_process");
 
@@ -43,7 +43,7 @@ bot.on("message", (mess) => {
     // xp add  
 
     let users;
-    fs.readFile("./users.json", (err, data) => {
+    fs.readFile("./data/users.json", (err, data) => {
         users = JSON.parse(data);
 
         let user = users.find(u => u.id == mess.author.id);
@@ -67,7 +67,7 @@ bot.on("message", (mess) => {
             }
         });
 
-        fs.writeFile("users.json", JSON.stringify(users, null, 4), () => { });
+        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => { });
 
     });
 
@@ -156,13 +156,12 @@ global.help = (mess) => {
 }
 
 global.send_m_xp = (mess) => {
-    fs.readFile("./users.json", (err, users) => {
+    fs.readFile("./data/users.json", (err, users) => {
         users = JSON.parse(users);
         let user = users.find((user) => {
             return user.id == mess.author.id;
         });
         mess.channel.send("vous avez " + (user.xp + 1) + "xp !");
-
     });
 }
 
@@ -172,7 +171,7 @@ global.passeLvl = (mess, user) => {
 }
 
 global.send_xp_of = (mess, mentions) => {
-    fs.readFile("./users.json", (err, users) => {
+    fs.readFile("./data/users.json", (err, users) => {
         users = JSON.parse(users);
         mentions.forEach((mention) => {
             let user = users.find((user) => {
@@ -180,12 +179,11 @@ global.send_xp_of = (mess, mentions) => {
             });
             mess.channel.send(user.username + " a " + (user.xp) + "xp !");
         });
-
     });
 }
 
 global.xp_reset = (mess, mentions) => {
-    fs.readFile("./users.json", (err, users) => {
+    fs.readFile("./data/users.json", (err, users) => {
         users = JSON.parse(users);
         mentions.forEach(mention => {
             let user = users.find((user) => {
@@ -194,7 +192,7 @@ global.xp_reset = (mess, mentions) => {
             user.xp = 0;
             user.lvl = 0;
         });
-        fs.writeFile("users.json", JSON.stringify(users, null, 4), () => { });
+        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => { });
         let string = "L'xp de ";
         mentions.forEach((mention, i) => {
             string += mention.username;

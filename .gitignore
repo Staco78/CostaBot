@@ -105,5 +105,4 @@ dist
 
 #autre
 download/
-config.json
-users.json
+data/
