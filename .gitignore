@@ -104,6 +104,6 @@ dist
 .tern-port
 
 #autre
-download
-users.json
+download/
 config.json
+users.json
