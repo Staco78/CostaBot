@@ -6,6 +6,7 @@ const bot = new Discord.Client();
 const config = require("./data/config.json");
 const commandes = require("./data/commandes.json");
 
+const sanitize = require("sanitize-filename");
 const childProcess = require("child_process");
 
 const ytb = require("ytdl-core");
@@ -15,25 +16,14 @@ const wss = new WebSocket.Server({ port: config.interface.port });
 let WS;
 
 function startInterface() {
-    // child = childProcess.spawn("cmd.exe", {shell: true} , ["/c", "node_modules\\@nodegui\\qode\\binaries\\qode.exe", "interface.js"]);
-    // child.send(JSON.stringify({ action: "start", uptime: bot.uptime }));
-    // global.log("all", bot.uptime);
-    // child.on("message", (mess) => {
-    //     mess = JSON.parse(mess);
-    //     if (mess.action == "func") {
-    //         global[mess.func]();
-    //     }
-    //     else if (mess.action == "log") {
-    //         global.log("all", mess.data);
-    //     }
-    // });
-    // child.on("error", (err) => {
-    //     global.log("all", "Interface erreur", err);
-    // });
-    // child.on("close", (code) => {
-    //     global.log("all", "Interface ferme avec le code", code);
-    //     process.exit();
-    // });
+
+}
+
+function startServer() {
+    let child = childProcess.fork("./server.js");
+    child.on("close", (code, signal) => {
+        console.log("Server close with code", code, "and signal", signal);
+    });
 }
 
 
@@ -134,7 +124,7 @@ global.log = function (type) {
     try {
         WS.send(JSON.stringify({ action: "addLog", data: args.join(" "), type: type }));
     }
-    catch (e) {console.log("error to send log at interface"); }
+    catch (e) { console.log("error to send log at interface"); }
 }
 
 global.test = (mess) => {
@@ -211,21 +201,30 @@ global.xp_reset = (mess, mentions) => {
 global.download = async (mess) => {
     let args = mess.content.split(" ");
     let info = await ytb.getBasicInfo(args[2]);
-    fs.access("./download/" + info.videoDetails.videoId + ".mp4", (err) => {
+    fs.access("./download/" + info.videoDetails.videoId + ".mp4", async (err) => {
         if (err) {
             mess.channel.send("Telechargement commencé...");
             let downloader = ytb(args[2], { quality: "highestaudio", filter: filter => filter.codecs == "mp4a.40.2" });
-            downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + ".mp4"));
+            downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + ".mp4")).on("finish", () => {
+                mess.channel.send("Envoi en cours...");
+                let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
+                mess.channel.send(message);
+            });
+            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + ".mp4", (err) => { });
         }
-        mess.channel.send("Envoi en cours...");
-        let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
-        mess.channel.send(message);
+        else {
+            mess.channel.send("Envoi en cours...");
+            let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
+            mess.channel.send(message);
+        }
+
     });
 }
 
 global.startBot();
+if (config.server.active)
+    startServer();
 startInterface();
-
 
 
 //ws

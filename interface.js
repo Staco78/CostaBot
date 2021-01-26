@@ -1,6 +1,6 @@
 const { QMainWindow, QPushButton, QBoxLayout, QWidget, Direction, QLabel, QTabWidget, QIcon, FlexLayout, QTextEdit, QListView, QComboBox } = require("@nodegui/nodegui");
 
-const config = require("./config.json");
+const config = require("./data/config.json");
 
 const WebSocket = require("ws");
 
@@ -15,6 +15,7 @@ let logsLevels = "";
 
 let win = new QMainWindow();
 win.resize(400, 300);
+win.setWindowTitle("CostaBot v" + process.env.npm_package_version);
 let centralWidget = new QWidget(win);
 win.setCentralWidget(centralWidget);
 let layoutAll = new QBoxLayout(Direction.TopToBottom, centralWidget);

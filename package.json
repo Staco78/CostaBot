@@ -8,6 +8,7 @@
     "discord.js": "^12.5.1",
     "express": "^4.17.1",
     "request": "^2.88.2",
+    "sanitize-filename": "^1.6.3",
     "ws": "7.4.2",
     "ytdl-core": "^4.4.5"
   },
