@@ -13,6 +13,11 @@ const ytb = require("ytdl-core");
 const WebSocket = require("ws");
 const wss = new WebSocket.Server({ port: config.interface.port });
 
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffmpeg = require('fluent-ffmpeg');
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+
 let WS;
 
 function startInterface() {
@@ -66,7 +71,7 @@ bot.on("message", (mess) => {
 
         let m = mess.content.replace(/<@!(.*)>/, "@cible");
         m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\w+/i, "LIEN_YOUTUBE");
-        m = m.replace("mp3", "FORMAT");
+        m = m.replace(/audio|video/i, "FORMAT");
         let args = m.split(" ");
         // global.log(mess.content);
         // global.log("all", m);
@@ -200,24 +205,50 @@ global.xp_reset = (mess, mentions) => {
 
 global.download = async (mess) => {
     let args = mess.content.split(" ");
+    let audioCodec;
+    let format;
+    let videoCodec;
+    let downloadFormat = "mp4";
+    if (args[4] == "audio") {
+        format = "mp3";
+        audioCodec = "mp4a.40.2";
+        videoCodec = null;
+    }
+    else if (args[4] == "video") {
+        format = "mp4";
+        audioCodec = "mp4a.40.2";
+        videoCodec = "avc1.64001F"
+    }
     let info = await ytb.getBasicInfo(args[2]);
-    fs.access("./download/" + info.videoDetails.videoId + ".mp4", async (err) => {
+    fs.access("./download/" + info.videoDetails.videoId + "." + format, async (err) => {
         if (err) {
-            mess.channel.send("Telechargement commencé...");
-            let downloader = ytb(args[2], { quality: "highestaudio", filter: filter => filter.codecs == "mp4a.40.2" });
-            downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + ".mp4")).on("finish", () => {
-                mess.channel.send("Envoi en cours...");
-                let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
-                mess.channel.send(message);
+            await new Promise((resolve, reject) => {
+                mess.channel.send("Telechargement commencé...");
+                let downloader = ytb(args[2], { filter: filter => { return filter.container == downloadFormat && filter.audioCodec == audioCodec && filter.videoCodec == videoCodec; } });
+                ffmpeg(downloader)
+                    .toFormat(format)
+                    .saveToFile("./download/" + info.videoDetails.videoId + "." + format)
+                    .on("end", () => {
+                        fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => { });
+                        resolve();
+                    });
             });
-            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + ".mp4", (err) => { });
-        }
-        else {
-            mess.channel.send("Envoi en cours...");
-            let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + ".mp4");
-            mess.channel.send(message);
         }
 
+        fs.stat("./download/" + info.videoDetails.videoId + "." + format, (err, stats) => {
+            if (err) throw err;
+            if (stats.size > 8_000_000) {
+                mess.channel.send("Fichier trop gros...\nClique ici: " + config.server.url + "download/" + info.videoDetails.videoId + "." + format);
+            }
+            else {
+                mess.channel.send("Envoi en cours...");
+                let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + "." + format);
+                mess.channel.send(message).catch((reason) => {
+                    mess.channel.send("Erreur veuillez réessayer !");
+                    console.log(reason);
+                });
+            }
+        });
     });
 }
 
