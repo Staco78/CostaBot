@@ -17,6 +17,7 @@ const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+const GenerateImage = require("./generateImage");
 
 let WS;
 
@@ -33,37 +34,44 @@ function startServer() {
 
 
 //gestion des commandes discord
-bot.on("message", (mess) => {
+bot.on("message", async(mess) => {
     global.log("message", mess.author.username, "a dit :", mess.content);
     // xp add  
 
     let users;
-    fs.readFile("./data/users.json", (err, data) => {
-        users = JSON.parse(data);
 
-        let user = users.find(u => u.id == mess.author.id);
-
-        if (user == undefined) {
-            user = {
-                username: mess.author.username,
-                id: mess.author.id,
-                xp: 0,
-                lvl: 0
+    await new Promise((resolve, reject) => {
+        fs.readFile("./data/users.json", (err, data) => {
+            if (err) {
+                reject();
             }
-            users.push(user);
-        }
-        user.xp += config.xp;
+            users = JSON.parse(data);
 
-        config.levels.forEach((level, i) => {
-            // global.log(user.xp, " || ", level.xp, " || ", i, " || ", user.lvl);
-            if (user.xp >= level.xp && i > user.lvl) {
-                user.lvl++;
-                global["passeLvl"](mess, user);
+            let user = users.find(u => u.id == mess.author.id);
+
+            if (user == undefined) {
+                user = {
+                    username: mess.author.username,
+                    id: mess.author.id,
+                    xp: 0,
+                    lvl: 0
+                }
+                users.push(user);
             }
+            user.xp += config.xp;
+
+            config.levels.forEach((level, i) => {
+                if (user.xp >= level.xp && i > user.lvl) {
+                    user.lvl++;
+                    global["passeLvl"](mess, user);
+                }
+            });
+
+
+            fs.writeFileSync("./data/users.json", JSON.stringify(users, null, 4));
+            resolve();
+
         });
-
-        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => { });
-
     });
 
     if (!mess.author.bot) {
@@ -110,7 +118,7 @@ bot.on("message", (mess) => {
 
 //toutes les fonctions:
 
-global.startBot = async () => {
+global.startBot = async() => {
     await bot.login(config.token);
     let version = process.env.npm_package_version;
     await bot.user.setActivity("CostaBot v" + version);
@@ -122,14 +130,15 @@ global.stopBot = () => {
     global.log("all", "Bot stoped !");
 }
 
-global.log = function (type) {
+global.log = function(type) {
     let args = Array.from(arguments);
     args.splice(0, 1);
     console.log(args.join(" "));
-    try {
-        WS.send(JSON.stringify({ action: "addLog", data: args.join(" "), type: type }));
+    if (config.interface.active) {
+        try {
+            WS.send(JSON.stringify({ action: "addLog", data: args.join(" "), type: type }));
+        } catch (e) { console.log("error to send log at interface"); }
     }
-    catch (e) { console.log("error to send log at interface"); }
 }
 
 global.test = (mess) => {
@@ -156,7 +165,11 @@ global.send_m_xp = (mess) => {
         let user = users.find((user) => {
             return user.id == mess.author.id;
         });
-        mess.channel.send("vous avez " + (user.xp + 1) + "xp !");
+
+        let image = new GenerateImage.XpStatus(mess.author.displayAvatarURL({ format: "png" }), user.xp + 1, user.username, mess.author.discriminator, user.lvl, () => {
+            let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
+            mess.channel.send(message);
+        });
     });
 }
 
@@ -187,14 +200,13 @@ global.xp_reset = (mess, mentions) => {
             user.xp = 0;
             user.lvl = 0;
         });
-        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => { });
+        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => {});
         let string = "L'xp de ";
         mentions.forEach((mention, i) => {
             string += mention.username;
             if (i == mentions.length - 2) {
                 string += " et "
-            }
-            else if (i < mentions.length - 2) {
+            } else if (i < mentions.length - 2) {
                 string += ", ";
             }
         });
@@ -203,7 +215,7 @@ global.xp_reset = (mess, mentions) => {
     });
 }
 
-global.download = async (mess) => {
+global.download = async(mess) => {
     let args = mess.content.split(" ");
     let audioCodec;
     let format;
@@ -213,34 +225,40 @@ global.download = async (mess) => {
         format = "mp3";
         audioCodec = "mp4a.40.2";
         videoCodec = null;
-    }
-    else if (args[4] == "video") {
+    } else if (args[4] == "video") {
         format = "mp4";
         audioCodec = "mp4a.40.2";
         videoCodec = "avc1.64001F"
     }
     let info = await ytb.getBasicInfo(args[2]);
-    fs.access("./download/" + info.videoDetails.videoId + "." + format, async (err) => {
+    fs.access("./download/" + info.videoDetails.videoId + "." + format, async(err) => {
         if (err) {
             await new Promise((resolve, reject) => {
                 mess.channel.send("Telechargement commencé...");
                 let downloader = ytb(args[2], { filter: filter => { return filter.container == downloadFormat && filter.audioCodec == audioCodec && filter.videoCodec == videoCodec; } });
-                ffmpeg(downloader)
-                    .toFormat(format)
-                    .saveToFile("./download/" + info.videoDetails.videoId + "." + format)
-                    .on("end", () => {
-                        fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => { });
+                if (format == downloadFormat) {
+                    downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + "." + format)).on("finish", () => {
+                        fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => {});
                         resolve();
                     });
+                } else {
+                    ffmpeg(downloader)
+                        .toFormat(format)
+                        .saveToFile("./download/" + info.videoDetails.videoId + "." + format)
+                        .on("end", () => {
+                            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => {});
+                            resolve();
+                        });
+                }
+
             });
         }
 
         fs.stat("./download/" + info.videoDetails.videoId + "." + format, (err, stats) => {
             if (err) throw err;
-            if (stats.size > 8_000_000) {
+            if (stats.size > 8000000) {
                 mess.channel.send("Fichier trop gros...\nClique ici: " + config.server.url + "download/" + info.videoDetails.videoId + "." + format);
-            }
-            else {
+            } else {
                 mess.channel.send("Envoi en cours...");
                 let message = new Discord.MessageAttachment("./download/" + info.videoDetails.videoId + "." + format);
                 mess.channel.send(message).catch((reason) => {
@@ -252,10 +270,18 @@ global.download = async (mess) => {
     });
 }
 
+global.spam = async(mess) => {
+    let x = setInterval(() => {
+        mess.channel.send("ET C LE SPAM <@!" + mess.mentions.users.array()[0] + ">")
+    }, 1000);
+    setTimeout(() => { clearInterval(x); }, 1000 * 60 * 0.5);
+}
+
 global.startBot();
 if (config.server.active)
     startServer();
-startInterface();
+if (config.interface.active)
+    startInterface();
 
 
 //ws
@@ -267,8 +293,7 @@ wss.on("connection", (ws) => {
         let mess = JSON.parse(data);
         if (mess.action == "func") {
             global[mess.func]();
-        }
-        else if (mess.action == "log") {
+        } else if (mess.action == "log") {
             global.log("all", mess.data);
         }
     });

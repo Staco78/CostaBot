@@ -9,6 +9,11 @@ const app = express();
 http.createServer(app).listen(config.server.port);
 console.log("Server started");
 
+app.use((req, res, next) => {
+    console.log(`Request ${req.method} at ${req.url} from ${req.ip}`);
+    next();
+});
+
 app.get("/download/*", (req, res) => {
     fs.readFile(__dirname + "/download/name/" + req.url.slice(10, req.url.length - 4), (err, data) => {
         if (err){
@@ -16,13 +21,13 @@ app.get("/download/*", (req, res) => {
             res.status(500).end();
             return;
         }
-        res.download(__dirname + "/download/" + req.url.slice(10, req.url.length), data.toString(), (err) => {
+        res.sendFile(__dirname + "/download/" + req.url.slice(10, req.url.length), (err) => {
             res.end();
+            // console.log("send file");
         });
     });
-    
-
 });
+
 
 app.use((req, res) => {
     res.write("Cette page n'existe pas (encore)");
