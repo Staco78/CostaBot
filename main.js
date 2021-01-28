@@ -34,7 +34,7 @@ function startServer() {
 
 
 //gestion des commandes discord
-bot.on("message", async(mess) => {
+bot.on("message", async (mess) => {
     global.log("message", mess.author.username, "a dit :", mess.content);
     // xp add  
 
@@ -75,8 +75,6 @@ bot.on("message", async(mess) => {
     });
 
     if (!mess.author.bot) {
-        let mentions = mess.mentions.users.array();
-
         let m = mess.content.replace(/<@!(.*)>/, "@cible");
         m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\w+/i, "LIEN_YOUTUBE");
         m = m.replace(/audio|video/i, "FORMAT");
@@ -102,7 +100,7 @@ bot.on("message", async(mess) => {
                         }
 
                         global.log("command", mess.author.username, "a utilise la commande", commande.name);
-                        global[commande.action](mess, mentions);
+                        global[commande.action](mess);
                     }
                 });
             });
@@ -118,7 +116,7 @@ bot.on("message", async(mess) => {
 
 //toutes les fonctions:
 
-global.startBot = async() => {
+global.startBot = async () => {
     await bot.login(config.token);
     let version = process.env.npm_package_version;
     await bot.user.setActivity("CostaBot v" + version);
@@ -130,7 +128,7 @@ global.stopBot = () => {
     global.log("all", "Bot stoped !");
 }
 
-global.log = function(type) {
+global.log = function (type) {
     let args = Array.from(arguments);
     args.splice(0, 1);
     console.log(args.join(" "));
@@ -178,20 +176,27 @@ global.passeLvl = (mess, user) => {
     mess.channel.send("Bravo <@!" + mess.author.id + "> tu es passé au niveau " + user.lvl);
 }
 
-global.send_xp_of = (mess, mentions) => {
+global.send_xp_of = (mess) => {
     fs.readFile("./data/users.json", (err, users) => {
         users = JSON.parse(users);
-        mentions.forEach((mention) => {
+        let mentions = mess.mentions.users.array();
+        mentions.forEach((mention, i) => {
+            // let author = mess.mentions.
             let user = users.find((user) => {
                 return user.id == mention;
             });
-            mess.channel.send(user.username + " a " + (user.xp) + "xp !");
+            let image = new GenerateImage.XpStatus(mention.displayAvatarURL({ format: "png" }), user.xp + 1, user.username, mention.discriminator, user.lvl, () => {
+                let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
+                mess.channel.send(message);
+            });
+
         });
     });
 }
 
-global.xp_reset = (mess, mentions) => {
+global.xp_reset = (mess) => {
     fs.readFile("./data/users.json", (err, users) => {
+        let mentions = mess.mentions.users.array();
         users = JSON.parse(users);
         mentions.forEach(mention => {
             let user = users.find((user) => {
@@ -200,7 +205,7 @@ global.xp_reset = (mess, mentions) => {
             user.xp = 0;
             user.lvl = 0;
         });
-        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => {});
+        fs.writeFile("./data/users.json", JSON.stringify(users, null, 4), () => { });
         let string = "L'xp de ";
         mentions.forEach((mention, i) => {
             string += mention.username;
@@ -215,7 +220,7 @@ global.xp_reset = (mess, mentions) => {
     });
 }
 
-global.download = async(mess) => {
+global.download = async (mess) => {
     let args = mess.content.split(" ");
     let audioCodec;
     let format;
@@ -231,14 +236,14 @@ global.download = async(mess) => {
         videoCodec = "avc1.64001F"
     }
     let info = await ytb.getBasicInfo(args[2]);
-    fs.access("./download/" + info.videoDetails.videoId + "." + format, async(err) => {
+    fs.access("./download/" + info.videoDetails.videoId + "." + format, async (err) => {
         if (err) {
             await new Promise((resolve, reject) => {
                 mess.channel.send("Telechargement commencé...");
                 let downloader = ytb(args[2], { filter: filter => { return filter.container == downloadFormat && filter.audioCodec == audioCodec && filter.videoCodec == videoCodec; } });
                 if (format == downloadFormat) {
                     downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + "." + format)).on("finish", () => {
-                        fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => {});
+                        fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => { });
                         resolve();
                     });
                 } else {
@@ -246,7 +251,7 @@ global.download = async(mess) => {
                         .toFormat(format)
                         .saveToFile("./download/" + info.videoDetails.videoId + "." + format)
                         .on("end", () => {
-                            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => {});
+                            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => { });
                             resolve();
                         });
                 }
@@ -270,7 +275,7 @@ global.download = async(mess) => {
     });
 }
 
-global.spam = async(mess) => {
+global.spam = async (mess) => {
     let x = setInterval(() => {
         mess.channel.send("ET C LE SPAM <@!" + mess.mentions.users.array()[0] + ">")
     }, 1000);
