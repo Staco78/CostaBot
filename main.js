@@ -18,8 +18,6 @@ const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const GenerateImage = require("./generateImage");
-const { createSecureServer } = require("http2");
-const { json } = require("express");
 
 let WS;
 
@@ -37,6 +35,9 @@ function startServer() {
 
 //gestion des commandes discord
 bot.on("message", async (mess) => {
+
+    if (mess.channel.id != config.channelLimit.channel && mess.guild.id != 664438592093028374){return;}
+
     global.log("message", mess.author.username, "a dit :", mess.content);
     // xp add  
 
