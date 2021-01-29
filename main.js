@@ -36,7 +36,7 @@ function startServer() {
 //gestion des commandes discord
 bot.on("message", async (mess) => {
 
-    if (mess.channel.id != config.channelLimit.channel && mess.guild.id != 664438592093028374){return;}
+    if (mess.guild.id != 664438592093028374){return;}
 
     global.log("message", mess.author.username, "a dit :", mess.content);
     // xp add  
