@@ -8,6 +8,7 @@ class XpStatus extends canvas.Canvas{
         this.context.strokeStyle = "rgb(48, 49, 54)";
         this.context.fillStyle = "rgb(48, 49, 54)";
 
+
         //arriere plan
         this.context.fillRect(100, 0, 360, 200);
 

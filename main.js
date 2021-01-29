@@ -18,6 +18,8 @@ const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const GenerateImage = require("./generateImage");
+const { createSecureServer } = require("http2");
+const { json } = require("express");
 
 let WS;
 
@@ -177,14 +179,17 @@ global.passeLvl = (mess, user) => {
 }
 
 global.send_xp_of = (mess) => {
-    fs.readFile("./data/users.json", (err, users) => {
+    fs.readFile("./data/users.json", async (err, users) => {
         users = JSON.parse(users);
         let mentions = mess.mentions.users.array();
-        mentions.forEach((mention, i) => {
+        mentions.forEach( async (mention, i) => {
             // let author = mess.mentions.
             let user = users.find((user) => {
                 return user.id == mention;
             });
+            if (user == undefined) {
+                user = await global.createUser(mention);
+            }
             let image = new GenerateImage.XpStatus(mention.displayAvatarURL({ format: "png" }), user.xp + 1, user.username, mention.discriminator, user.lvl, () => {
                 let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
                 mess.channel.send(message);
@@ -281,6 +286,33 @@ global.spam = async (mess) => {
     }, 1000);
     setTimeout(() => { clearInterval(x); }, 1000 * 60 * 0.5);
 }
+
+global.createUser = async (user) => {
+    return new Promise((resolve, reject) => {
+        fs.readFile("./data/users.json", (err, data) => {
+            data = JSON.parse(data);
+            data.forEach((u) => {
+                if (u.id == user.id) {
+                    reject(new Error("L'utilisateur existe deja !"));
+                }
+            });
+            let newUser = {
+                "username": user.username,
+                "id": user.id,
+                "xp": 0,
+                "lvl": 0
+            }
+            data.push(newUser);
+            fs.writeFile("./data/users.json", JSON.stringify(data, null, 4), (err) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve(newUser);
+            })
+        });
+    });
+}
+
 
 global.startBot();
 if (config.server.active)
