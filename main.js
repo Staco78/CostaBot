@@ -49,16 +49,14 @@
         if (mess.guild.id != 664438592093028374) { return; }
 
         global.log("message", mess.author.username, "a dit :", mess.content);
+
         // xp add  
-
-
         await new Promise((resolve, reject) => {
             db.findOne({ id: mess.author.id }, { projection: { _id: 0, id: 1, xp: 1, lvl: 1 } }).then(async (user) => {
-                console.log(user);
                 if (user == undefined) {
                     user = await global.createUser(mess.author);
                 }
-                await addXp(mess.author.id, mess.createdTimestamp);
+                user.xp += await addXp(mess.author.id, mess.createdTimestamp);
 
                 config.levels.forEach((level, i) => {
                     if (user.xp >= level.xp && i > user.lvl) {
@@ -288,13 +286,15 @@
     async function addXp(id, createdTimestamp) {
         return new Promise((resolve, reject) => {
             db.findOne({ id: id }, { projection: { _id: 0, xp: 1, lastMessage: 1 } }).then((user) => {
+                let add = 0;
                 let xp = user.xp;
                 if (user.lastMessage == null || createdTimestamp - user.lastMessage > config.antispamMs) {
-                    xp += randomInt(config.xp.min, config.xp.max);
+                    add = randomInt(config.xp.min, config.xp.max);
+                    xp += add;
                     user.lastMessage = createdTimestamp;
                 }
-                db.findOneAndUpdate({ id: id }, { $set: { xp: xp } })
-                    .then(resolve())
+                db.findOneAndUpdate({ id: id }, { $set: { xp: xp, lastMessage: user.lastMessage } })
+                    .then(resolve(add))
                     .catch(reason => reject(reason));
             });
         });
