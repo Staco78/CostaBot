@@ -18,6 +18,7 @@ const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const GenerateImage = require("./generateImage");
+const { randomInt } = require("crypto");
 
 let WS;
 
@@ -36,7 +37,7 @@ function startServer() {
 //gestion des commandes discord
 bot.on("message", async (mess) => {
 
-    if (mess.guild.id != 664438592093028374){return;}
+    if (mess.guild.id != 664438592093028374) { return; }
 
     global.log("message", mess.author.username, "a dit :", mess.content);
     // xp add  
@@ -44,7 +45,7 @@ bot.on("message", async (mess) => {
     let users;
 
     await new Promise((resolve, reject) => {
-        fs.readFile("./data/users.json", (err, data) => {
+        fs.readFile("./data/users.json", async (err, data) => {
             if (err) {
                 reject();
             }
@@ -53,25 +54,19 @@ bot.on("message", async (mess) => {
             let user = users.find(u => u.id == mess.author.id);
 
             if (user == undefined) {
-                user = {
-                    username: mess.author.username,
-                    id: mess.author.id,
-                    xp: 0,
-                    lvl: 0
-                }
+                user = await global.createUser(mess.author);
                 users.push(user);
             }
-            user.xp += config.xp;
-
+            addXp(mess.author.id, mess.createdTimestamp);
             config.levels.forEach((level, i) => {
                 if (user.xp >= level.xp && i > user.lvl) {
-                    user.lvl++;
-                    global["passeLvl"](mess, user);
+                    let data = JSON.parse(fs.readFileSync("./data/users.json"));
+                    let uu = data.find(u => u.id == mess.author.id);
+                    uu.lvl++;
+                    fs.writeFileSync("./data/users.json", JSON.stringify(data, null, 4));
+                    global["passeLvl"](mess, uu);
                 }
             });
-
-
-            fs.writeFileSync("./data/users.json", JSON.stringify(users, null, 4));
             resolve();
 
         });
@@ -79,7 +74,7 @@ bot.on("message", async (mess) => {
 
     if (!mess.author.bot) {
         let m = mess.content.replace(/<@!(.*)>/, "@cible");
-        m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\w+/i, "LIEN_YOUTUBE");
+        m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\S+/i, "LIEN_YOUTUBE");
         m = m.replace(/audio|video/i, "FORMAT");
         let args = m.split(" ");
         // global.log(mess.content);
@@ -183,7 +178,7 @@ global.send_xp_of = (mess) => {
     fs.readFile("./data/users.json", async (err, users) => {
         users = JSON.parse(users);
         let mentions = mess.mentions.users.array();
-        mentions.forEach( async (mention, i) => {
+        mentions.forEach(async (mention, i) => {
             // let author = mess.mentions.
             let user = users.find((user) => {
                 return user.id == mention;
@@ -311,6 +306,22 @@ global.createUser = async (user) => {
                     resolve(newUser);
             })
         });
+    });
+}
+
+async function addXp(id, createdTimestamp) {
+    return new Promise((resolve, reject) => {
+        let data = JSON.parse(fs.readFileSync("./data/users.json"));
+        data.forEach((user) => {
+            if (user.id == id){
+                if (user.lastMessage == null || createdTimestamp - user.lastMessage > config.antispamMs){
+                    user.xp += randomInt(config.xp.min, config.xp.max);
+                    user.lastMessage = createdTimestamp;
+                }
+            }
+        });
+        fs.writeFileSync("./data/users.json", JSON.stringify(data, null, 4));
+        resolve();
     });
 }
 
