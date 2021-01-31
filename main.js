@@ -58,9 +58,20 @@
                 }
                 user.xp += await addXp(mess.author.id, mess.createdTimestamp);
 
+                await new Promise((resolve, reject) => {
+                    db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1 } }).toArray().then((users) => {
+                        // console.log(users);
+                        users.sort((a, b) => b.xp - a.xp);
+                        // console.log(users);
+                        users.forEach((user, i) => {
+                            db.findOneAndUpdate({ id: user.id }, { $set: { rank: i + 1 } }).then(() => resolve(), (reason) => reject(reason));
+                        });
+                    });
+                });
+
                 config.levels.forEach((level, i) => {
                     if (user.xp >= level.xp && i > user.lvl) {
-                        db.findOneAndUpdate({id: user.id}, {$set: {lvl: user.lvl + 1}});
+                        db.findOneAndUpdate({ id: user.id }, { $set: { lvl: user.lvl + 1 } });
                         user.lvl++;
                         global["passeLvl"](mess, user);
                     }
@@ -71,10 +82,14 @@
             });
         });
 
+        //triage du rang
+        
+
         if (!mess.author.bot) {
             let m = mess.content.replace(/<@!(.*)>/, "@cible");
             m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\S+/i, "LIEN_YOUTUBE");
             m = m.replace(/audio|video/i, "FORMAT");
+            m = m.toLowerCase();
             let args = m.split(" ");
             // global.log(mess.content);
             // global.log("all", m);
@@ -137,7 +152,7 @@
     }
 
     global.test = (mess) => {
-        mess.channel.send("commande test effectue");
+
     }
 
     global.help = (mess) => {
@@ -156,9 +171,9 @@
 
     global.send_m_xp = async (mess) => {
         return new Promise((resolve, reject) => {
-            db.findOne({ id: mess.author.id }, { projection: { _id: 0, xp: 1, username: 1, lvl: 1 } }).then((user) => {
+            db.findOne({ id: mess.author.id }, { projection: { _id: 0, xp: 1, username: 1, lvl: 1, rank: 1 } }).then((user) => {
                 if (user == null) { reject(new Error("User don't exist in mongo")) }
-                let image = new GenerateImage.XpStatus(mess.author.displayAvatarURL({ format: "png" }), user.xp, user.username, mess.author.discriminator, user.lvl, () => {
+                let image = new GenerateImage.XpStatus(mess.author.displayAvatarURL({ format: "png" }), user.xp, user.username, mess.author.discriminator, user.lvl, user.rank, () => {
                     let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
                     mess.channel.send(message);
                     resolve();
@@ -167,9 +182,18 @@
         });
     }
 
-    global.passeLvl = (mess, user) => {
-        global.log("levels", "level", user.lvl, "passé par", user.username);
-        mess.channel.send("Bravo <@!" + mess.author.id + "> tu es passé au niveau " + user.lvl);
+    global.passeLvl = (mess, u) => {
+        return new Promise((resolve, reject) => {
+            global.log("levels", "level", u.lvl, "passé par", u.username);
+            db.findOne({ id: u.id }, { projection: { _id: 0, xp: 1, username: 1, lvl: 1, rank: 1 } }).then((user) => {
+                if (user == null) { reject(new Error("User don't exist in mongo")) }
+                let image = new GenerateImage.LevelPass(mess.author.displayAvatarURL({ format: "png" }), user.xp, user.username, mess.author.discriminator, user.lvl, user.rank, () => {
+                    let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
+                    mess.channel.send(message);
+                    resolve();
+                });
+            });
+        });
     }
 
     global.send_xp_of = (mess) => {
@@ -178,9 +202,9 @@
             mess.mentions.users.array().forEach((mention) => {
                 mentions.push(mention.id);
             });
-            db.find({ id: { $in: mentions } }, { projection: { _id: 0, id: 1, username: 1, xp: 1, lvl: 1 } }).toArray().then((result) => {
+            db.find({ id: { $in: mentions } }, { projection: { _id: 0, id: 1, username: 1, xp: 1, lvl: 1, rank: 1 } }).toArray().then((result) => {
                 result.forEach((user, i) => {
-                    let image = new GenerateImage.XpStatus(mess.mentions.users.array()[i].displayAvatarURL({ format: "png" }), user.xp, user.username, mess.mentions.users.array()[i].discriminator, user.lvl, () => {
+                    let image = new GenerateImage.XpStatus(mess.mentions.users.array()[i].displayAvatarURL({ format: "png" }), user.xp, user.username, mess.mentions.users.array()[i].discriminator, user.lvl, user.rank, () => {
                         let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
                         mess.channel.send(message);
                     });
@@ -277,9 +301,10 @@
                 "id": user.id,
                 "xp": 0,
                 "lvl": 0,
-                "lastMessage": null
+                "lastMessage": null,
+                "rank": null
             }
-            db.insertOne(newUser).then(resolve()).catch(reason => reject(reason));
+            db.insertOne(newUser).then(resolve(newUser)).catch(reason => reject(reason));
         });
     }
 
