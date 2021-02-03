@@ -76,7 +76,7 @@
             let args = m.split(" ");
 
             // global.log(mess.content);
-            global.log("all", m);
+            // global.log("all", m);
             if (args[0] == config.keyWord) {
                 args.splice(0, 1);
                 let find = false;

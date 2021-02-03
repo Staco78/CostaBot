@@ -159,10 +159,8 @@ class Classement extends canvas.Canvas {
         })
     }
     async genere(onEnd) {
-        console.log(this.users);
         for (let i = 0; i < this.users.length; i++) {
             const user = this.users[i];
-            console.log("avant promise", i, user.username);
             await new Promise((resolve, reject) => {
                 this.image = new XpStatus(user.avatarUrl, user.xp, user.username, user.discriminator, user.lvl, user.rank, () => {
                     if (i % 2 == 0) {
@@ -173,12 +171,10 @@ class Classement extends canvas.Canvas {
                         this.x = 575;
                         this.y = (i - 1) * 110;
                     }
-                    console.log(user.username, this.x, this.y, i);
                     this.context.drawImage(this.image, this.x, this.y);
                     resolve();
                 });
             });
-            console.log("apres promise", i, user.username);
             if (i == this.users.length - 1) {
                 onEnd();
             }
