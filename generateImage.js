@@ -118,7 +118,7 @@ class LevelPass extends canvas.Canvas {
         this.context.stroke();
 
         //text du bas
-        this.context.fillStyle = "black";
+        this.context.fillStyle = "white";
         this.context.font = "30px Arial";
         this.context.fillText("Bravo", 20, 300);
         this.context.fillText(`${username}#${discriminator}`, 20, 360, 300);
@@ -139,7 +139,55 @@ class LevelPass extends canvas.Canvas {
 
 }
 
+class Classement extends canvas.Canvas {
+    constructor(users, onEnd) {
+
+        if (users.length % 2 == 0) {
+            super(1100, users.length * 110);
+        }
+        else {
+            super(1100, (users.length + 1) * 110);
+
+        }
+        this.users = users;
+        this.users.sort((a, b) => {
+            return a.rank - b.rank;
+        });
+        this.context = this.getContext("2d");
+        this.genere(() => {
+            onEnd(this);
+        })
+    }
+    async genere(onEnd) {
+        console.log(this.users);
+        for (let i = 0; i < this.users.length; i++) {
+            const user = this.users[i];
+            console.log("avant promise", i, user.username);
+            await new Promise((resolve, reject) => {
+                this.image = new XpStatus(user.avatarUrl, user.xp, user.username, user.discriminator, user.lvl, user.rank, () => {
+                    if (i % 2 == 0) {
+                        this.x = 25;
+                        this.y = i * 110;
+                    }
+                    else {
+                        this.x = 575;
+                        this.y = (i - 1) * 110;
+                    }
+                    console.log(user.username, this.x, this.y, i);
+                    this.context.drawImage(this.image, this.x, this.y);
+                    resolve();
+                });
+            });
+            console.log("apres promise", i, user.username);
+            if (i == this.users.length - 1) {
+                onEnd();
+            }
+        }
+    }
+}
+
 module.exports = {
     XpStatus,
-    LevelPass
+    LevelPass,
+    Classement
 }

@@ -56,69 +56,41 @@
                 if (user == undefined) {
                     user = await global.createUser(mess.author);
                 }
-                user.xp += await addXp(mess.author.id, mess.createdTimestamp);
+                await addXp(mess.author.id, mess.createdTimestamp);
+                await updateUsers(mess);
 
-                await new Promise((resolve, reject) => {
-                    db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1 } }).toArray().then((users) => {
-                        // console.log(users);
-                        users.sort((a, b) => b.xp - a.xp);
-                        // console.log(users);
-                        users.forEach((user, i) => {
-                            db.findOneAndUpdate({ id: user.id }, { $set: { rank: i + 1 } }).then(() => resolve(), (reason) => reject(reason));
-                        });
-                    });
-                });
-
-                config.levels.forEach((level, i) => {
-                    if (user.xp >= level.xp && i > user.lvl) {
-                        db.findOneAndUpdate({ id: user.id }, { $set: { lvl: user.lvl + 1 } });
-                        user.lvl++;
-                        global["passeLvl"](mess, user);
-                    }
-                });
                 resolve();
             }).catch((reason) => {
                 reject(reason);
             });
         });
 
-        //triage du rang
-        
-
         if (!mess.author.bot) {
-            let m = mess.content.replace(/<@!(.*)>/, "@cible");
+            let m = mess.content
+            m = m.toLowerCase();
+            m = m.replace(/<@\S+>/, "@cible");
             m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\S+/i, "LIEN_YOUTUBE");
             m = m.replace(/audio|video/i, "FORMAT");
-            m = m.toLowerCase();
-            let args = m.split(" ");
-            // global.log(mess.content);
-            // global.log("all", m);
-            if (args[0].toLowerCase() == config.keyWord) {
-                let cmd_find = false;
-                commandes.forEach((commande) => {
-                    let cmd_args = commande.cmd.split(" ");
-                    let x = false;
-                    cmd_args.forEach((arg, index) => {
-                        if (arg != args[index + 1]) {
-                            x = true;
-                        }
-                        if (index == cmd_args.length - 1 && !x) {
-                            cmd_find = true;
-                            if (commande.access != "") {
-                                if (!mess.member.hasPermission(commande.access)) {
-                                    mess.channel.send("Et non, cette commande est reservé...");
-                                    return;
-                                }
-                            }
+            m = m.replace(/[0-9]+/i, "NOMBRE");
 
-                            global.log("command", mess.author.username, "a utilise la commande", commande.name);
-                            global[commande.action](mess);
-                        }
-                    });
+            let args = m.split(" ");
+
+            // global.log(mess.content);
+            global.log("all", m);
+            if (args[0] == config.keyWord) {
+                args.splice(0, 1);
+                let find = false;
+                commandes.forEach((commande) => {
+                    if (commande.cmd == args.join(" ")) {
+                        global.log("command", `${mess.author.username} a utilise la commande ${commande.name}`);
+                        global[commande.action](mess);
+                        find = true;
+                    }
+
                 });
-                if (mess.content == config.keyWord) {
+                if (m.split(" ").length == 1) {
                     global["help"](mess);
-                } else if (!cmd_find) {
+                } else if (!find) {
                     mess.channel.send("Je ne connais pas cette commande\n*Faut il que je l'apprenne ?*");
                 }
             }
@@ -127,6 +99,36 @@
 
 
     //toutes les fonctions:
+
+    async function updateUsers(mess) {
+        return new Promise((resolve, reject) => {
+            db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1, lvl: 1 } }).toArray().then((users) => {
+                // console.log(users);
+                users.sort((a, b) => b.xp - a.xp);
+                // console.log(users);
+                users.forEach((user, i) => {
+                    db.findOneAndUpdate({ id: user.id }, { $set: { rank: i + 1 } }).then(() => {
+                        config.levels.forEach((level, i) => {
+                            users.forEach((user) => {
+                                if (user.xp >= level.xp && i > user.lvl) {
+                                    db.findOneAndUpdate({ id: user.id }, { $set: { lvl: user.lvl + 1 } });
+                                    user.lvl++;
+                                    global["passeLvl"](mess, bot.users.cache.get(user.id));
+                                }
+                                if (user.xp < level.xp && i < user.lvl){
+                                    db.findOneAndUpdate({ id: user.id }, { $set: { lvl: user.lvl - 1 } });
+                                    user.lvl--;
+                                }
+                            });
+                        });
+                        resolve();
+                    }, (reason) => reject(reason));
+                });
+
+            });
+        });
+
+    }
 
     global.startBot = async () => {
         await bot.login(config.token);
@@ -152,7 +154,7 @@
     }
 
     global.test = (mess) => {
-
+        mess.reply("test");
     }
 
     global.help = (mess) => {
@@ -187,7 +189,7 @@
             global.log("levels", "level", u.lvl, "passé par", u.username);
             db.findOne({ id: u.id }, { projection: { _id: 0, xp: 1, username: 1, lvl: 1, rank: 1 } }).then((user) => {
                 if (user == null) { reject(new Error("User don't exist in mongo")) }
-                let image = new GenerateImage.LevelPass(mess.author.displayAvatarURL({ format: "png" }), user.xp, user.username, mess.author.discriminator, user.lvl, user.rank, () => {
+                let image = new GenerateImage.LevelPass(u.displayAvatarURL({ format: "png" }), user.xp, user.username, u.discriminator, user.lvl, user.rank, () => {
                     let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
                     mess.channel.send(message);
                     resolve();
@@ -203,6 +205,9 @@
                 mentions.push(mention.id);
             });
             db.find({ id: { $in: mentions } }, { projection: { _id: 0, id: 1, username: 1, xp: 1, lvl: 1, rank: 1 } }).toArray().then((result) => {
+                if (result == null) {
+                    reject(new Error("Utilisateur introuvable"));
+                }
                 result.forEach((user, i) => {
                     let image = new GenerateImage.XpStatus(mess.mentions.users.array()[i].displayAvatarURL({ format: "png" }), user.xp, user.username, mess.mentions.users.array()[i].discriminator, user.lvl, user.rank, () => {
                         let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
@@ -251,7 +256,7 @@
         fs.access("./download/" + info.videoDetails.videoId + "." + format, async (err) => {
             if (err) {
                 await new Promise((resolve, reject) => {
-                    mess.channel.send("Telechargement commencé...");
+                    mess.channel.send("Telechargement en cours...");
                     let downloader = ytb(args[2], { filter: filter => { return filter.container == downloadFormat && filter.audioCodec == audioCodec && filter.videoCodec == videoCodec; } });
                     if (format == downloadFormat) {
                         downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + "." + format)).on("finish", () => {
@@ -298,30 +303,86 @@
         return new Promise((resolve, reject) => {
             let newUser = {
                 "username": user.username,
+                "discriminator": user.discriminator,
                 "id": user.id,
                 "xp": 0,
                 "lvl": 0,
                 "lastMessage": null,
-                "rank": null
+                "rank": null,
+                "avatarUrl": user.displayAvatarURL({ format: "png" })
             }
             db.insertOne(newUser).then(resolve(newUser)).catch(reason => reject(reason));
         });
     }
 
-    async function addXp(id, createdTimestamp) {
+    global.help_admin = (mess) => {
+        let message = new Discord.MessageEmbed()
+            .setTitle("Liste des commandes administrateurs")
+            .setDescription("")
+            .setColor("RED");
+
+        commandes.forEach((commande) => {
+            if (!commande.masked && commande.access == "ADMINISTRATOR") {
+                message.description += "**" + commande.name + "** : ";
+                message.description += "    " + commande.description + "\n";
+                message.description += "Utilisation: *" + config.keyWord + " " + commande.cmd + "*\n";
+            }
+        });
+        mess.channel.send(message);
+    }
+
+    async function addXp(id, createdTimestamp, _xp = null) {
         return new Promise((resolve, reject) => {
             db.findOne({ id: id }, { projection: { _id: 0, xp: 1, lastMessage: 1 } }).then((user) => {
+                if (user == null) {
+                    reject(new Error("Utilisateur introuvable"));
+                }
                 let add = 0;
                 let xp = user.xp;
                 if (user.lastMessage == null || createdTimestamp - user.lastMessage > config.antispamMs) {
-                    add = randomInt(config.xp.min, config.xp.max);
+                    if (_xp != null) {
+                        add = _xp;
+                    }
+                    else {
+                        add = randomInt(config.xp.min, config.xp.max);
+                    }
                     xp += add;
-                    user.lastMessage = createdTimestamp;
+                    user.lastMessage = createdTimestamp != Infinity ? createdTimestamp : user.lastMessage;
                 }
                 db.findOneAndUpdate({ id: id }, { $set: { xp: xp, lastMessage: user.lastMessage } })
                     .then(resolve(add))
                     .catch(reason => reject(reason));
             });
+        });
+    }
+
+    global.add_xp = async (mess) => {
+        let mention = mess.mentions.users.array()[0];
+        await addXp(mention.id, Infinity, parseInt(mess.content.split(" ")[4]));
+        await updateUsers(mess);
+        let user = await db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1, lvl: 1, rank: 1 } });
+        mess.channel.send(`${mention.username} vient de gagner ${mess.content.split(" ")[4]}xp et est` +
+            ` maintenant level ${user.lvl} avec ${user.xp}xp et rang ${user.rank}`);
+    }
+
+    global.set_xp = (mess) => {
+        let mention = mess.mentions.users.array()[0];
+        db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1 } }).then(async (user) => {
+            await addXp(mention.id, Infinity, parseInt(mess.content.split(" ")[4]) - user.xp);
+            await updateUsers(mess);
+            user = await db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1, lvl: 1, rank: 1 } });
+            mess.channel.send(`${mention.username} a maintenant ${user.xp}xp et est maintenant level ${user.lvl} et rang ${user.rank}`);
+        });
+
+    }
+
+    global.classement = (mess) => {
+        updateUsers(mess);
+        db.find({}, { _id: 0, id: 1, username: 1, discriminator: 1, avatarUrl: 1, lvl: 1, rank: 1 }).toArray().then((users) => {
+            new GenerateImage.Classement(users, (image) => {
+                let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
+                mess.channel.send(message);
+            })
         });
     }
 
