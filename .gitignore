@@ -108,3 +108,5 @@ download/
 data/
 CostaBot.zip
 .gitignore
+test.js
+test.mp3

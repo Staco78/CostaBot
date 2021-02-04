@@ -20,6 +20,7 @@
 
     const GenerateImage = require("./generateImage");
     const { randomInt } = require("crypto");
+    const QrCode = require("qrcode");
 
     const { MongoClient } = require('mongodb');
     const uri = "mongodb://127.0.0.1:27017/?readPreference=primary&gs" +
@@ -66,31 +67,20 @@
         });
 
         if (!mess.author.bot) {
-            let m = mess.content
-            m = m.toLowerCase();
-            m = m.replace(/<@\S+>/, "@cible");
-            m = m.replace(/http(.*):\/\/www.youtube.com\/watch\?v=\S+/i, "LIEN_YOUTUBE");
-            m = m.replace(/audio|video/i, "FORMAT");
-            m = m.replace(/[0-9]+/i, "NOMBRE");
-
-            let args = m.split(" ");
-
-            // global.log(mess.content);
-            // global.log("all", m);
-            if (args[0] == config.keyWord) {
-                args.splice(0, 1);
-                let find = false;
-                commandes.forEach((commande) => {
-                    if (commande.cmd == args.join(" ")) {
-                        global.log("command", `${mess.author.username} a utilise la commande ${commande.name}`);
-                        global[commande.action](mess);
-                        find = true;
-                    }
-
+            if (mess.content.startsWith(config.keyWord)) {
+                let command = commandes.find((c) => {
+                    let r = new RegExp(c.regExp, "ig");
+                    return mess.content.match(r) != null
                 });
-                if (m.split(" ").length == 1) {
+                if (command) {
+                    global.log("command", `${mess.author.username} a utilise la commande ${command.name}`);
+                    global[command.action](mess);
+                }
+                else if (mess.content.toLowerCase() == config.keyWord) {
+                    global.log("command", `${mess.author.username} a utilise la commande help`);
                     global["help"](mess);
-                } else if (!find) {
+                }
+                else {
                     mess.channel.send("Je ne connais pas cette commande\n*Faut il que je l'apprenne ?*");
                 }
             }
@@ -100,7 +90,7 @@
 
     //toutes les fonctions:
 
-    async function updateUsers(mess) {
+    async function updateUsers(mess, sendMess) {
         return new Promise((resolve, reject) => {
             db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1, lvl: 1 } }).toArray().then((users) => {
                 // console.log(users);
@@ -113,9 +103,10 @@
                                 if (user.xp >= level.xp && i > user.lvl) {
                                     db.findOneAndUpdate({ id: user.id }, { $set: { lvl: user.lvl + 1 } });
                                     user.lvl++;
-                                    global["passeLvl"](mess, bot.users.cache.get(user.id));
+                                    if (sendMess)
+                                        global["passeLvl"](mess, bot.users.cache.get(user.id));
                                 }
-                                if (user.xp < level.xp && i < user.lvl){
+                                if (user.xp < level.xp && i < user.lvl) {
                                     db.findOneAndUpdate({ id: user.id }, { $set: { lvl: user.lvl - 1 } });
                                     user.lvl--;
                                 }
@@ -368,8 +359,9 @@
     global.set_xp = (mess) => {
         let mention = mess.mentions.users.array()[0];
         db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1 } }).then(async (user) => {
+            await db.findOneAndUpdate({ id: mention.id }, { $set: { lvl: 0 } });
             await addXp(mention.id, Infinity, parseInt(mess.content.split(" ")[4]) - user.xp);
-            await updateUsers(mess);
+            await updateUsers(mess, false);
             user = await db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1, lvl: 1, rank: 1 } });
             mess.channel.send(`${mention.username} a maintenant ${user.xp}xp et est maintenant level ${user.lvl} et rang ${user.rank}`);
         });
@@ -386,14 +378,66 @@
         });
     }
 
+    global.ta_gueule = (mess) => {
+        mess.channel.send("https://tenor.com/view/milk-and-mocha-cry-sad-tears-upset-gif-11667710");
+    }
+
+    global.random = (mess) => {
+        if (mess.content.split(" ").length == 2) {
+            mess.channel.send(randomInt(1, 10));
+        }
+        else if (mess.content.split(" ").length == 3) {
+            mess.channel.send(randomInt(1, parseInt(mess.content.split(" ")[2])));
+        }
+        else if (mess.content.split(" ").length == 4) {
+            mess.channel.send(randomInt(parseInt(mess.content.split(" ")[2]), parseInt(mess.content.split(" ")[3])));
+        }
+    }
+
+    global.qr = (mess) => {
+        let m = mess.content.slice(mess.content.indexOf(" ") - 1, mess.content.length).slice(mess.content.indexOf(" "), mess.content.length);
+        QrCode.toBuffer(m, (err, result) => {
+            if (err) {
+                mess.channel.send("Erreur");
+                return;
+            }
+            mess.channel.send(new Discord.MessageAttachment(result));
+        });
+    }
+
+    global.avatar = (mess) => {
+        // var mess = new Discord.Message()
+        let mentions = mess.mentions.users.array();
+        let size = mess.content.match(/\s[0-9]+\s/) || 128;
+        let format = mess.content.match(/png|gif|jpeg|jpg|webp/i) || "png";
+        if (Array.isArray(size))
+            size = size[0];
+        if (Array.isArray(format))
+            format = format[0];
+
+        if (mentions.length == 0) {
+            mess.channel.send(mess.author.displayAvatarURL({ format: format, size: parseInt(size) }));
+        }
+        else {
+            mentions.forEach(mention => {
+                mess.channel.send(mention.displayAvatarURL({ format: format, size: parseInt(size) }));
+            });
+        }
+    }
+
+    global.dl_minia = (mess) => {
+        let link = mess.content.match(/https?:\/\/www.youtube.com\/watch\?v=(\S+)/);
+        mess.channel.send("http://img.youtube.com/vi/" + link[1] + "/maxresdefault.jpg");
+    }
+
     global.startBot();
     if (config.server.active)
         startServer();
     if (config.interface.active)
         startInterface();
 
-    //ws
 
+    //ws
     wss.on("connection", (ws) => {
         WS = ws;
         ws.send(JSON.stringify({ action: "start", uptime: bot.uptime }));
