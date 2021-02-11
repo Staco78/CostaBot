@@ -1,10 +1,15 @@
-const { QMainWindow, QPushButton, QBoxLayout, QWidget, Direction, QLabel, QTabWidget, QIcon, FlexLayout, QTextEdit, QListView, QComboBox } = require("@nodegui/nodegui");
+const { QMainWindow, QPushButton, QBoxLayout, QWidget, Direction, QLabel, QTabWidget, QIcon, QTextEdit, QComboBox } = require("@nodegui/nodegui");
 
 const config = require("./data/config.json");
 
 const WebSocket = require("ws");
 
 let ws = new WebSocket("ws://localhost:" + config.interface.port);
+console.log("Connection...");
+ws.onopen = () => {
+    console.log("Authorisation en cours...");
+    ws.send(JSON.stringify({ action: "connect", token: config.interface.token }));
+}
 
 //variables globales
 let logsAll = "";
@@ -14,7 +19,7 @@ let logsLevels = "";
 
 
 let win = new QMainWindow();
-win.resize(400, 300);
+win.setFixedSize(400, 300);
 win.setWindowTitle("CostaBot v" + process.env.npm_package_version);
 let centralWidget = new QWidget(win);
 win.setCentralWidget(centralWidget);
@@ -66,7 +71,7 @@ page1_button.addEventListener("clicked", () => {
     else {
         send.func = "stopBot";
         page1_button.setText("Start");
-        
+
     }
     ws.send(JSON.stringify(send));
 });
@@ -75,35 +80,64 @@ page1_button.addEventListener("clicked", () => {
 //message
 ws.onmessage = (message) => {
     message = JSON.parse(message.data);
-    console.log(message);
-    if (message.action == "start") {
-        if (message.uptime == "null") {
-            page1_button.setText("Start");
-            page1_label.setText("Bot éteint");
-        }
-        else {
-            page1_button.setText("Stop");
-            let startedSince = new Date(Date.now() - message.uptime);
-            page1_label.setText("Bot allumé le " + startedSince.toLocaleDateString() + " à " + startedSince.toLocaleTimeString());
-        }
+    // console.log(message);
+    switch (message.action) {
 
+        case "connect":
+            console.log("Authorisation reussi");
+            if (message.uptime == "null") {
+                page1_button.setText("Start");
+                page1_label.setText("Bot éteint");
+            }
+            else {
+                page1_button.setText("Stop");
+                let startedSince = new Date(Date.now() - message.uptime);
+                page1_label.setText("Bot allumé le " + startedSince.toLocaleDateString() + " à " + startedSince.toLocaleTimeString());
+            }
+            win.show();
+            break;
+        case "logs":
+            message.logs.forEach(m => {
+                logsAll += m.data + "\n";
+                if (m.type == "message") {
+                    logsMessages += m.data + "\n";
+                }
+                if (m.type == "levels") {
+                    logsLevels += m.data + "\n";
+                }
+                if (m.type == "command") {
+                    logsCommands += m.data + "\n";
+                }
+            });
+            page2_textArea_changeText();
+            break;
+        case "addLog":
+            logsAll += message.data + "\n";
+            if (message.type == "message") {
+                logsMessages += message.data + "\n";
+            }
+            if (message.type == "levels") {
+                logsLevels += message.data + "\n";
+            }
+            if (message.type == "command") {
+                logsCommands += message.data + "\n";
+            }
+            page2_textArea_changeText();
+            break;
+        default:
+            break;
     }
-    else if (message.action == "addLog") {
-        console.log("addlog");
-        logsAll += message.data + "\n";
-        if (message.type == "message") {
-            logsMessages += message.data + "\n";
-        }
-        if (message.type == "levels") {
-            logsLevels += message.data + "\n";
-        }
-        if (message.type == "command") {
-            logsCommands += message.data + "\n";
-        }
-        page2_textArea_changeText();
-    }
-    win.show();
 };
+
+ws.on("close", (code, reason) => {
+    switch (code) {
+        case 403:
+            console.log("Authorisation echoue !");
+            break;
+        default:
+            console.log(`Ws ferme avec le code ${code} ! Raison: ${reason}`);
+    }
+});
 
 page2_comboBox.addEventListener("currentTextChanged", () => {
     page2_textArea_changeText();

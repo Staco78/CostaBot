@@ -1,3 +1,4 @@
+
 (async function () {
     const fs = require("fs");
 
@@ -19,8 +20,11 @@
     ffmpeg.setFfmpegPath(ffmpegPath);
 
     const GenerateImage = require("./generateImage");
+    const Music = require("./music.js");
+    const Giveway = require("./giveway.js");
     const { randomInt } = require("crypto");
     const QrCode = require("qrcode");
+    const { getUrlfromText } = require("tts-googlehome");
 
     const { MongoClient } = require('mongodb');
     const uri = "mongodb://127.0.0.1:27017/?readPreference=primary&gs" +
@@ -31,6 +35,9 @@
     const db = client.db("CostaBot").collection("users");
 
     let WS;
+    let MusicPlayer;
+
+    fs.writeFileSync("./data/logs.json", JSON.stringify([], null, 4), (err) => { });
 
     function startInterface() {
 
@@ -39,7 +46,7 @@
     function startServer() {
         let child = childProcess.fork("./server.js");
         child.on("close", (code, signal) => {
-            console.log("Server close with code", code, "and signal", signal);
+            console.log("Server close with code", code);
         });
     }
 
@@ -47,7 +54,12 @@
     //gestion des commandes discord
     bot.on("message", async (mess) => {
 
-        if (mess.guild.id != 664438592093028374) { return; }
+        if (mess.guild === null && !mess.author.bot) {
+
+            bot.users.cache.get(config.dmTo).send(`${mess.author.username} a dit: *${mess.content}*`);
+            mess.channel.send("Bien recu");
+            return;
+        }
 
         global.log("message", mess.author.username, "a dit :", mess.content);
 
@@ -67,14 +79,21 @@
         });
 
         if (!mess.author.bot) {
-            if (mess.content.startsWith(config.keyWord)) {
+            if (mess.content.toLowerCase().startsWith(config.keyWord)) {
                 let command = commandes.find((c) => {
                     let r = new RegExp(c.regExp, "ig");
                     return mess.content.match(r) != null
                 });
                 if (command) {
+                    if (command.access != "")
+                        if (!mess.member.hasPermission(command.access)) {
+                            mess.channel.send("Et non, cette commande est reservé...");
+                            return;
+                        }
                     global.log("command", `${mess.author.username} a utilise la commande ${command.name}`);
                     global[command.action](mess);
+
+
                 }
                 else if (mess.content.toLowerCase() == config.keyWord) {
                     global.log("command", `${mess.author.username} a utilise la commande help`);
@@ -90,7 +109,7 @@
 
     //toutes les fonctions: 
 
-    async function updateUsers(mess, sendMess) {
+    async function updateUsers(mess, sendMess = true) {
         return new Promise((resolve, reject) => {
             db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1, lvl: 1 } }).toArray().then((users) => {
                 // console.log(users);
@@ -124,7 +143,7 @@
     global.startBot = async () => {
         await bot.login(config.token);
         let version = process.env.npm_package_version;
-        await bot.user.setActivity("CostaBot v" + version);
+        await bot.user.setActivity("CostaBot v" + version + " (DM si bug)");
         global.log("all", "Bot started !");
     }
 
@@ -137,6 +156,15 @@
         let args = Array.from(arguments);
         args.splice(0, 1);
         console.log(args.join(" "));
+        fs.readFile("./data/logs.json", (err, data) => {
+            let logs = JSON.parse(data);
+            let m = {
+                type: type,
+                data: args.join(" ")
+            };
+            logs.push(m);
+            fs.writeFile("./data/logs.json", JSON.stringify(logs, null, 4), (err) => { });
+        });
         if (config.interface.active) {
             try {
                 WS.send(JSON.stringify({ action: "addLog", data: args.join(" "), type: type }));
@@ -144,8 +172,12 @@
         }
     }
 
-    global.test = (mess) => {
-        mess.reply("test");
+    global.test = async (mess = new Discord.Message()) => {
+        // mess.reply("test");
+
+        let url = getUrlfromText("Je mange des tables à longueur de jounée et je croque des tabourets tous les mardis apres midi", "fr-FR");
+        let x = await mess.guild.member(mess.author.id).voice.channel.join();
+        x.play(url, { volume: 2 });
     }
 
     global.help = (mess) => {
@@ -177,9 +209,9 @@
 
     global.passeLvl = (mess, u) => {
         return new Promise((resolve, reject) => {
-            global.log("levels", "level", u.lvl, "passé par", u.username);
             db.findOne({ id: u.id }, { projection: { _id: 0, xp: 1, username: 1, lvl: 1, rank: 1 } }).then((user) => {
                 if (user == null) { reject(new Error("User don't exist in mongo")) }
+                global.log("levels", "level", user.lvl, "passé par", user.username);
                 let image = new GenerateImage.LevelPass(u.displayAvatarURL({ format: "png" }), user.xp, user.username, u.discriminator, user.lvl, user.rank, () => {
                     let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
                     mess.channel.send(message);
@@ -322,7 +354,7 @@
         mess.channel.send(message);
     }
 
-    async function addXp(id, createdTimestamp, _xp = null) {
+    async function addXp(id, createdTimestamp, _xp) {
         return new Promise((resolve, reject) => {
             db.findOne({ id: id }, { projection: { _id: 0, xp: 1, lastMessage: 1 } }).then((user) => {
                 if (user == null) {
@@ -331,11 +363,11 @@
                 let add = 0;
                 let xp = user.xp;
                 if (user.lastMessage == null || createdTimestamp - user.lastMessage > config.antispamMs) {
-                    if (_xp != null) {
+                    if (_xp) {
                         add = _xp;
                     }
                     else {
-                        add = randomInt(config.xp.min, config.xp.max);
+                        add = randomInt(config.xp.text.min, config.xp.text.max);
                     }
                     xp += add;
                     user.lastMessage = createdTimestamp != Infinity ? createdTimestamp : user.lastMessage;
@@ -430,6 +462,42 @@
         mess.channel.send("http://img.youtube.com/vi/" + link[1] + "/maxresdefault.jpg");
     }
 
+    global.music = (mess) => {
+        MusicPlayer = new Music.Player(mess);
+    }
+
+    global.music_add = (mess) => {
+        if (!MusicPlayer) {
+            mess.channel.send("Erreur: Le lecteur de musique n'est pas actif");
+            return;
+        }
+        if (MusicPlayer.mess.channel != mess.channel) {
+            mess.channel.send("Erreur: Le lecteur de musique n'est pas dans ce channel");
+            return;
+        }
+        let link = mess.content.match(/https?:\/\/www.youtube.com\/watch\?v=\S+/);
+        let list = mess.content.match(/https?:\/\/www.youtube.com\/playlist\?list=(\S+)/);
+
+        if (link)
+            MusicPlayer.add(link);
+        else if (list)
+            MusicPlayer.add_playlist(list[1]);
+        else
+            mess.channel.send("Erreur: aucun lien trouvé");
+    }
+
+    global.music_resend = (mess) => {
+        MusicPlayer.resend(mess);
+    }
+
+    global.giveway = async (mess) => {
+        // new Giveway(mess, await db.find({}).toArray()).on("end", (users, xp) => {
+        //     users.forEach(async (user) => {
+        //         await addXp(user.id, Infinity, xp);
+        //     });
+        // });
+    }
+
     global.startBot();
     if (config.server.active)
         startServer();
@@ -437,18 +505,57 @@
         startInterface();
 
 
+    setInterval(() => {
+        bot.users.cache.forEach(user => {
+            let member = bot.guilds.cache.array()[0].member(user.id);
+            if (member)
+                if (member.voice)
+                    if (member.voice.channel)
+                        addXp(user.id, Infinity, randomInt(config.xp.voc.min, config.xp.voc.max));
+        });
+    }, 60000);
+
+
     //ws
     wss.on("connection", (ws) => {
         WS = ws;
-        ws.send(JSON.stringify({ action: "start", uptime: bot.uptime }));
+        ws.connected = false;
         ws.on("message", (data) => {
             let mess = JSON.parse(data);
-            if (mess.action == "func") {
-                global[mess.func]();
-            } else if (mess.action == "log") {
-                global.log("all", mess.data);
+            if (!ws.connected && mess.action != "connect") {
+                console.log(`Connection non autorisé depuis ${ws.url}`);
+                ws.close(403, "Unauthorized");
+                return;
+            }
+            switch (mess.action) {
+                case "connect":
+                    if (ws.authorized(mess)) {
+                        ws.send(JSON.stringify({ action: "connect", uptime: bot.uptime }));
+                        fs.readFile("./data/logs.json", (err, data) => {
+                            data = JSON.parse(data);
+                            ws.send(JSON.stringify({
+                                action: "logs",
+                                logs: data
+                            }));
+                        });
+                        ws.connected = true;
+                    }
+                    else
+                        ws.close();
+                    break;
+                case "func":
+                    global[mess.func]();
+                    break;
+                case "log":
+                    global.log("all", mess.data);
+                    break;
+                default:
+                    break;
             }
         });
+        ws.authorized = (mess) => {
+            return mess.token == config.interface.token;
+        }
     });
 
 })()
