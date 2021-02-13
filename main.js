@@ -9,7 +9,7 @@
     const commandes = require("./data/commandes.json");
 
     const sanitize = require("sanitize-filename");
-    const childProcess = require("child_process");
+    const Process_info = require("process-infos");
 
     const ytb = require("ytdl-core");
     const WebSocket = require("ws");
@@ -25,6 +25,7 @@
     const { randomInt } = require("crypto");
     const QrCode = require("qrcode");
     const { getUrlfromText } = require("tts-googlehome");
+    const os_utils = require("node-os-utils");
 
     const { MongoClient } = require('mongodb');
     const uri = "mongodb://127.0.0.1:27017/?readPreference=primary&gs" +
@@ -518,6 +519,7 @@
 
     //ws
     wss.on("connection", (ws) => {
+        console.log("connection au ws");
         WS = ws;
         ws.connected = false;
         ws.on("message", (data) => {
@@ -529,19 +531,35 @@
             }
             switch (mess.action) {
                 case "connect":
-                    if (ws.authorized(mess)) {
-                        ws.send(JSON.stringify({ action: "connect", uptime: bot.uptime }));
-                        fs.readFile("./data/logs.json", (err, data) => {
-                            data = JSON.parse(data);
-                            ws.send(JSON.stringify({
-                                action: "logs",
-                                logs: data
-                            }));
-                        });
-                        ws.connected = true;
+                    if (!ws.connected) {
+                        if (ws.authorized(mess)) {
+                            ws.interval = setInterval(async () => {
+                                ws.send(JSON.stringify({
+                                    action: "refresh",
+                                    perf: {
+                                        cpu_usage: await os_utils.cpu.usage(),
+                                        mem: await os_utils.mem.info()
+                                    },
+                                    discord_infos: {
+                                        channels: Process_info.discordChannels(bot),
+                                        version: Process_info.discordVersion(),
+                                        users: Process_info.discordUsers(bot)
+                                    }
+                                }));
+                            }, 1000);
+                            ws.send(JSON.stringify({ action: "connect", uptime: bot.uptime }));
+                            fs.readFile("./data/logs.json", (err, data) => {
+                                data = JSON.parse(data);
+                                ws.send(JSON.stringify({
+                                    action: "logs",
+                                    logs: data
+                                }));
+                            });
+                            ws.connected = true;
+                        }
+                        else
+                            ws.close();
                     }
-                    else
-                        ws.close();
                     break;
                 case "func":
                     global[mess.func]();
@@ -553,9 +571,16 @@
                     break;
             }
         });
+
+        ws.on("close", (code, reason) => {
+            ws.connected = false;
+            clearInterval(ws.interval);
+        });
+
         ws.authorized = (mess) => {
             return mess.token == config.interface.token;
         }
     });
+
 
 })()
