@@ -110,3 +110,5 @@ CostaBot.zip
 .gitignore
 test.js
 test.mp3
+out/
+ffmpeg.exe

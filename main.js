@@ -15,9 +15,8 @@
     const WebSocket = require("ws");
     const wss = new WebSocket.Server({ port: config.interface.port });
 
-    const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
     const ffmpeg = require('fluent-ffmpeg');
-    ffmpeg.setFfmpegPath(ffmpegPath);
+    ffmpeg.setFfmpegPath("./ffmpeg.exe");
 
     const GenerateImage = require("./generateImage");
     const Music = require("./music.js");
@@ -174,11 +173,11 @@
     }
 
     global.test = async (mess = new Discord.Message()) => {
-        // mess.reply("test");
+        mess.reply("test");
 
-        let url = getUrlfromText("Je mange des tables à longueur de jounée et je croque des tabourets tous les mardis apres midi", "fr-FR");
-        let x = await mess.guild.member(mess.author.id).voice.channel.join();
-        x.play(url, { volume: 2 });
+        // let url = getUrlfromText("Je mange des tables à longueur de jounée et je croque des tabourets tous les mardis apres midi", "fr-FR");
+        // let x = await mess.guild.member(mess.author.id).voice.channel.join();
+        // x.play(url, { volume: 2 });
     }
 
     global.help = (mess) => {
