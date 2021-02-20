@@ -1,5 +1,4 @@
-
-(async function () {
+(async function() {
     const fs = require("fs");
 
     const Discord = require("discord.js");
@@ -13,7 +12,6 @@
 
     const ytb = require("ytdl-core");
     const WebSocket = require("ws");
-    const wss = new WebSocket.Server({ port: config.interface.port });
 
     const ffmpeg = require('fluent-ffmpeg');
     ffmpeg.setFfmpegPath("./ffmpeg.exe");
@@ -23,11 +21,10 @@
     const Giveway = require("./giveway.js");
     const { randomInt } = require("crypto");
     const QrCode = require("qrcode");
-    const { getUrlfromText } = require("tts-googlehome");
     const os_utils = require("node-os-utils");
 
     const { MongoClient } = require('mongodb');
-    const uri = "mongodb://127.0.0.1:27017/?readPreference=primary&gs" +
+    const uri = "mongodb://localhost:27017/?readPreference=primary&gs" +
         "sapiServiceName=mongodb&appname=MongoDB%20Compass&ssl=false";
 
     const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -36,8 +33,9 @@
 
     let WS;
     let MusicPlayer;
+    // let giveway;
 
-    fs.writeFileSync("./data/logs.json", JSON.stringify([], null, 4), (err) => { });
+    fs.writeFileSync("./data/logs.json", JSON.stringify([], null, 4), (err) => {});
 
     function startInterface() {
 
@@ -52,7 +50,7 @@
 
 
     //gestion des commandes discord
-    bot.on("message", async (mess) => {
+    bot.on("message", async(mess) => {
 
         if (mess.guild === null && !mess.author.bot) {
 
@@ -65,7 +63,7 @@
 
         // xp add  
         await new Promise((resolve, reject) => {
-            db.findOne({ id: mess.author.id }, { projection: { _id: 0, id: 1, xp: 1, lvl: 1 } }).then(async (user) => {
+            db.findOne({ id: mess.author.id }, { projection: { _id: 0, id: 1, xp: 1, lvl: 1 } }).then(async(user) => {
                 if (user == undefined) {
                     user = await global.createUser(mess.author);
                 }
@@ -94,12 +92,10 @@
                     global[command.action](mess);
 
 
-                }
-                else if (mess.content.toLowerCase() == config.keyWord) {
+                } else if (mess.content.toLowerCase() == config.keyWord) {
                     global.log("command", `${mess.author.username} a utilise la commande help`);
                     global["help"](mess);
-                }
-                else {
+                } else {
                     mess.channel.send("Je ne connais pas cette commande\n*Faut il que je l'apprenne ?*");
                 }
             }
@@ -111,12 +107,16 @@
 
     async function updateUsers(mess, sendMess = true) {
         return new Promise((resolve, reject) => {
-            db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1, lvl: 1 } }).toArray().then((users) => {
+            db.find({}, { projection: { _id: 0, id: 1, xp: 1, rank: 1, lvl: 1, avatarUrl: 1 } }).toArray().then((users) => {
                 // console.log(users);
                 users.sort((a, b) => b.xp - a.xp);
                 // console.log(users);
                 users.forEach((user, i) => {
-                    db.findOneAndUpdate({ id: user.id }, { $set: { rank: i + 1 } }).then(() => {
+                    if (bot.users.cache.get(user.id))
+                        var avatarUrl = bot.users.cache.get(user.id).displayAvatarURL({ format: "png" })
+                    else
+                        var avatarUrl = user.avatarUrl;
+                    db.findOneAndUpdate({ id: user.id }, { $set: { rank: i + 1, avatarUrl: avatarUrl } }).then(() => {
                         config.levels.forEach((level, i) => {
                             users.forEach((user) => {
                                 if (user.xp >= level.xp && i > user.lvl) {
@@ -140,7 +140,7 @@
 
     }
 
-    global.startBot = async () => {
+    global.startBot = async() => {
         await bot.login(config.token);
         let version = process.env.npm_package_version;
         await bot.user.setActivity("CostaBot v" + version + " (DM si bug)");
@@ -152,7 +152,7 @@
         global.log("all", "Bot stoped !");
     }
 
-    global.log = function (type) {
+    global.log = function(type) {
         let args = Array.from(arguments);
         args.splice(0, 1);
         console.log(args.join(" "));
@@ -163,7 +163,7 @@
                 data: args.join(" ")
             };
             logs.push(m);
-            fs.writeFile("./data/logs.json", JSON.stringify(logs, null, 4), (err) => { });
+            fs.writeFile("./data/logs.json", JSON.stringify(logs, null, 4), (err) => {});
         });
         if (config.interface.active) {
             try {
@@ -172,12 +172,8 @@
         }
     }
 
-    global.test = async (mess = new Discord.Message()) => {
+    global.test = async(mess = new Discord.Message()) => {
         mess.reply("test");
-
-        // let url = getUrlfromText("Je mange des tables à longueur de jounée et je croque des tabourets tous les mardis apres midi", "fr-FR");
-        // let x = await mess.guild.member(mess.author.id).voice.channel.join();
-        // x.play(url, { volume: 2 });
     }
 
     global.help = (mess) => {
@@ -194,7 +190,7 @@
         mess.channel.send(message);
     }
 
-    global.send_m_xp = async (mess) => {
+    global.send_m_xp = async(mess) => {
         return new Promise((resolve, reject) => {
             db.findOne({ id: mess.author.id }, { projection: { _id: 0, xp: 1, username: 1, lvl: 1, rank: 1 } }).then((user) => {
                 if (user == null) { reject(new Error("User don't exist in mongo")) }
@@ -242,14 +238,14 @@
         });
     }
 
-    global.xp_reset = async (mess) => {
+    global.xp_reset = async(mess) => {
         return new Promise((resolve, reject) => {
             let mentions = [];
             mess.mentions.users.array().forEach((mention) => {
                 mentions.push(mention.id);
             });
             db.find({ id: { $in: mentions } }, { projection: { _id: 0, id: 1, username: 1, xp: 1, lvl: 1 } }).toArray().then((result) => {
-                result.forEach(async (user, i) => {
+                result.forEach(async(user, i) => {
                     user.xp = 0;
                     user.lvl = 0;
                     await db.findOneAndUpdate({ id: user.id }, { $set: { xp: user.xp, lvl: user.lvl } });
@@ -260,7 +256,7 @@
         });
     }
 
-    global.download = async (mess) => {
+    global.download = async(mess) => {
         let args = mess.content.split(" ");
         let audioCodec;
         let format;
@@ -276,14 +272,14 @@
             videoCodec = "avc1.64001F"
         }
         let info = await ytb.getBasicInfo(args[2]);
-        fs.access("./download/" + info.videoDetails.videoId + "." + format, async (err) => {
+        fs.access("./download/" + info.videoDetails.videoId + "." + format, async(err) => {
             if (err) {
                 await new Promise((resolve, reject) => {
                     mess.channel.send("Telechargement en cours...");
                     let downloader = ytb(args[2], { filter: filter => { return filter.container == downloadFormat && filter.audioCodec == audioCodec && filter.videoCodec == videoCodec; } });
                     if (format == downloadFormat) {
                         downloader.pipe(fs.createWriteStream("./download/" + info.videoDetails.videoId + "." + format)).on("finish", () => {
-                            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => { });
+                            fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => {});
                             resolve();
                         });
                     } else {
@@ -291,7 +287,7 @@
                             .toFormat(format)
                             .saveToFile("./download/" + info.videoDetails.videoId + "." + format)
                             .on("end", () => {
-                                fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => { });
+                                fs.writeFile(__dirname + "/download/name/" + info.videoDetails.videoId, sanitize(info.videoDetails.title) + "." + format, (err) => {});
                                 resolve();
                             });
                     }
@@ -315,14 +311,14 @@
         });
     }
 
-    global.spam = async (mess) => {
+    global.spam = async(mess) => {
         let x = setInterval(() => {
             mess.channel.send("ET C LE SPAM <@!" + mess.mentions.users.array()[0] + ">")
         }, 1000);
         setTimeout(() => { clearInterval(x); }, 1000 * 60 * 0.5);
     }
 
-    global.createUser = async (user) => {
+    global.createUser = async(user) => {
         return new Promise((resolve, reject) => {
             let newUser = {
                 "username": user.username,
@@ -365,8 +361,7 @@
                 if (user.lastMessage == null || createdTimestamp - user.lastMessage > config.antispamMs) {
                     if (_xp) {
                         add = _xp;
-                    }
-                    else {
+                    } else {
                         add = randomInt(config.xp.text.min, config.xp.text.max);
                     }
                     xp += add;
@@ -379,7 +374,7 @@
         });
     }
 
-    global.add_xp = async (mess) => {
+    global.add_xp = async(mess) => {
         let mention = mess.mentions.users.array()[0];
         await addXp(mention.id, Infinity, parseInt(mess.content.split(" ")[4]));
         await updateUsers(mess);
@@ -390,7 +385,7 @@
 
     global.set_xp = (mess) => {
         let mention = mess.mentions.users.array()[0];
-        db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1 } }).then(async (user) => {
+        db.findOne({ id: mention.id }, { projection: { _id: 0, xp: 1 } }).then(async(user) => {
             await db.findOneAndUpdate({ id: mention.id }, { $set: { lvl: 0 } });
             await addXp(mention.id, Infinity, parseInt(mess.content.split(" ")[4]) - user.xp);
             await updateUsers(mess, false);
@@ -400,8 +395,8 @@
 
     }
 
-    global.classement = (mess) => {
-        updateUsers(mess);
+    global.classement = async(mess) => {
+        await updateUsers(mess);
         db.find({}, { _id: 0, id: 1, username: 1, discriminator: 1, avatarUrl: 1, lvl: 1, rank: 1 }).toArray().then((users) => {
             new GenerateImage.Classement(users, (image) => {
                 let message = new Discord.MessageAttachment(image.toBuffer("image/png"));
@@ -417,11 +412,9 @@
     global.random = (mess) => {
         if (mess.content.split(" ").length == 2) {
             mess.channel.send(randomInt(1, 10));
-        }
-        else if (mess.content.split(" ").length == 3) {
+        } else if (mess.content.split(" ").length == 3) {
             mess.channel.send(randomInt(1, parseInt(mess.content.split(" ")[2])));
-        }
-        else if (mess.content.split(" ").length == 4) {
+        } else if (mess.content.split(" ").length == 4) {
             mess.channel.send(randomInt(parseInt(mess.content.split(" ")[2]), parseInt(mess.content.split(" ")[3])));
         }
     }
@@ -449,8 +442,7 @@
 
         if (mentions.length == 0) {
             mess.channel.send(mess.author.displayAvatarURL({ format: format, size: parseInt(size) }));
-        }
-        else {
+        } else {
             mentions.forEach(mention => {
                 mess.channel.send(mention.displayAvatarURL({ format: format, size: parseInt(size) }));
             });
@@ -463,6 +455,8 @@
     }
 
     global.music = (mess) => {
+        if (MusicPlayer)
+            MusicPlayer.destroy()
         MusicPlayer = new Music.Player(mess);
     }
 
@@ -471,7 +465,7 @@
             mess.channel.send("Erreur: Le lecteur de musique n'est pas actif");
             return;
         }
-        if (MusicPlayer.mess.channel != mess.channel) {
+        if (MusicPlayer.channel != mess.channel) {
             mess.channel.send("Erreur: Le lecteur de musique n'est pas dans ce channel");
             return;
         }
@@ -487,11 +481,14 @@
     }
 
     global.music_resend = (mess) => {
-        MusicPlayer.resend(mess);
+        if (MusicPlayer)
+            MusicPlayer.resend(mess);
     }
 
-    global.giveway = async (mess) => {
-        // new Giveway(mess, await db.find({}).toArray()).on("end", (users, xp) => {
+    global.giveway = async(mess) => {
+        // if (giveway)
+        //     giveway.destroy();
+        // giveway = new Giveway(mess, await db.find({}).toArray()).on("end", (users, xp) => {
         //     users.forEach(async (user) => {
         //         await addXp(user.id, Infinity, xp);
         //     });
@@ -517,8 +514,10 @@
 
 
     //ws
-    wss.on("connection", (ws) => {
-        console.log("connection au ws");
+    if (config.interface.active)
+        var interfaceWss = new WebSocket.Server({ port: config.interface.port });
+    interfaceWss.on("connection", (ws) => {
+        console.log("connection au ws de l'interface");
         WS = ws;
         ws.connected = false;
         ws.on("message", (data) => {
@@ -532,7 +531,7 @@
                 case "connect":
                     if (!ws.connected) {
                         if (ws.authorized(mess)) {
-                            ws.interval = setInterval(async () => {
+                            ws.interval = setInterval(async() => {
                                 ws.send(JSON.stringify({
                                     action: "refresh",
                                     perf: {
@@ -555,9 +554,8 @@
                                 }));
                             });
                             ws.connected = true;
-                        }
-                        else
-                            ws.close();
+                        } else
+                            ws.close(4003);
                     }
                     break;
                 case "func":
@@ -582,4 +580,49 @@
     });
 
 
+    //api
+    if (config.api.active) {
+        const express = require('express');
+        const app = express();
+        app.listen(config.api.port);
+
+        app.get("/musics/infos/all", (req, res) => {
+            if (MusicPlayer)
+                res.status(200).json(MusicPlayer.getAllInfos());
+            else
+                res.status(200).json({ Error: "No music player" });
+        });
+        app.get("/musics/historic/infos/all", (req, res) => {
+            if (MusicPlayer)
+                res.status(200).json(MusicPlayer.getAllHistoricInfos());
+            else
+                res.status(200).json({ Error: "No music player" });
+        });
+        app.get("/musics/all/infos/all", (req, res) => {
+            if (MusicPlayer)
+                res.status(200).json(MusicPlayer.getAllHistoricInfos().concat(MusicPlayer.getAllInfos()));
+            else
+                res.status(200).json({ Error: "No music player" });
+        });
+        app.get("/musics/infos", (req, res) => {
+            if (MusicPlayer)
+                res.status(200).json(MusicPlayer.getInfos());
+            else
+                res.status(200).json({ Error: "No music player" });
+        });
+        app.get("/musics/historic/infos", (req, res) => {
+            if (MusicPlayer)
+                res.status(200).json(MusicPlayer.getHistoricInfos());
+            else
+                res.status(200).json({ Error: "No music player" });
+        });
+        app.get("/musics/all/infos", (req, res) => {
+            if (MusicPlayer)
+                res.status(200).json(MusicPlayer.getHistoricInfos().concat(MusicPlayer.getInfos()));
+            else
+                res.status(200).json({ Error: "No music player" });
+        });
+
+
+    }
 })()

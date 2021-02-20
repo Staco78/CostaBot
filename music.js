@@ -1,30 +1,27 @@
 const Discord = require("discord.js");
 const ytdl = require("ytdl-core");
 const { scrapePlaylist } = require("youtube-playlist-scraper");
-const events = require("events");
 const { getUrlfromText } = require("tts-googlehome");
 
 
 class Player {
     constructor(mess = new Discord.Message()) {
-        this.mess = mess;
+        if (!mess.channel)
+            this.channel = mess;
+        else
+            this.channel = mess.channel;
         this.queue = [];
         this.historique = [];
-        this.Event = new events.EventEmitter();
         this.playing = false;
         this.volume = 1;
         this.message = new Discord.MessageEmbed()
             .setTitle("Aucune musique en lecture")
             .setDescription("")
-        this.Event.on("add", () => {
-
-        });
         let link = mess.content.match(/https?:\/\/www.youtube.com\/watch\?v=\S+/);
         let list = mess.content.match(/https?:\/\/www.youtube.com\/playlist\?list=(\S+)/);
         if (link) {
             new Music(link).getInfo().then(music => {
                 this.queue = [music]
-                this.Event.emit("add");
                 this.message = new Discord.MessageEmbed()
                     .setTitle("En attente...")
                     .setDescription(music.title)
@@ -33,16 +30,14 @@ class Player {
                     .setFooter(`Durée: ${music.length.minutes}:${music.length.secondes}`);
                 this.send();
             });
-        }
-        else if (list) {
+        } else if (list) {
             scrapePlaylist(list[1]).then(async result => {
                 // console.log(result);
                 this.queue = []
                 await new Promise((resolve, reject) => {
-                    result.playlist.forEach(async (r, i) => {
+                    result.playlist.forEach(async(r, i) => {
                         let music = await new Music(r.url).getInfo()
                         this.queue.push(music)
-                        this.Event.emit("add");
                         if (i == result.playlist.length - 1)
                             resolve();
                     });
@@ -55,15 +50,14 @@ class Player {
                     .setFooter(`Durée: ${this.queue[0].length.minutes}:${this.queue[0].length.secondes}`);
                 this.send();
             });
-        }
-        else
+        } else
             this.send();
 
 
     }
     send() {
-        return new Promise(async (resolve, reject) => {
-            this.sentMess = await this.mess.channel.send(this.message);
+        return new Promise(async(resolve, reject) => {
+            this.sentMess = await this.channel.send(this.message);
             Promise.all([
                 this.sentMess.react("⏪"),
                 this.sentMess.react("▶️"),
@@ -92,7 +86,7 @@ class Player {
                             else
                                 this.mess.channel.send("Pas dans un salon vocal");
                         else
-                            this.mess.channel.send("Erreur");
+                            this.mess.channel.send("Erreur member inexistant");
                         break;
 
                     case "⏯️":
@@ -108,7 +102,7 @@ class Player {
                         break;
 
                     case "⏹️":
-                        this.stop();
+                        this.destroy();
                         break;
 
                     case "⏩":
@@ -122,8 +116,7 @@ class Player {
                     case "🔉":
                         if (this.volume < 0.2) {
                             this.dispatcher.setVolume(0);
-                        }
-                        else
+                        } else
                             this.dispatcher.setVolume(this.volume - 0.2);
                         this.volume = this.dispatcher.volume;
                         // console.log(this.dispatcher.volume);
@@ -132,8 +125,7 @@ class Player {
                     case "🔊":
                         if (this.volume > 1.8) {
                             this.dispatcher.setVolume(2);
-                        }
-                        else
+                        } else
                             this.dispatcher.setVolume(this.volume + 0.2);
                         this.volume = this.dispatcher.volume;
                         // console.log(this.dispatcher.volume);
@@ -149,17 +141,15 @@ class Player {
     add(link) {
         new Music(link).getInfo().then(music => {
             this.queue.push(music);
-            this.Event.emit("add");
             this.mess.channel.send(`${music.title} a été ajouté à la liste de lecture en position ${this.queue.length} !`);
         });
     }
     add_playlist(list_id) {
         scrapePlaylist(list_id).then(async result => {
             await new Promise((resolve, reject) => {
-                result.playlist.forEach(async (r, i) => {
+                result.playlist.forEach(async(r, i) => {
                     let music = await new Music(r.url).getInfo()
                     this.queue.push(music)
-                    this.Event.emit("add");
                     if (i == result.playlist.length - 1)
                         resolve();
                 });
@@ -190,15 +180,16 @@ class Player {
         try {
             this.dispatcher = this.connection.play(ytdl(this.actualMusic.link, { filter: "audioonly" }));
             this.dispatcher.setVolume(this.volume || 1);
-        }
-        catch (e) {
+        } catch (e) {
             this.playing = false;
             this.queue.unshift(this.actualMusic);
             this.actualMusic = null;
+            console.log(e);
             this.mess.channel.send("Erreur");
             return;
         }
         this.dispatcher.on("finish", () => {
+            console.log("finish");
             this.playing = false;
             this.historique.push(this.actualMusic);
             this.actualMusic = null;
@@ -206,7 +197,7 @@ class Player {
             this.play();
         })
     }
-    stop() {
+    destroy() {
         if (this.connection)
             if (typeof this.connection.disconnect == "function")
                 this.connection.disconnect();
@@ -215,7 +206,14 @@ class Player {
                 this.sentMess.delete();
             else
                 console.log("Error to delete music player");
-        this.queue = [];
+        this.queue = null;
+        this.historique = null;
+        this.mess = null;
+        this.sentMess = null;
+        this.message = null;
+        this.volume = null;
+        this.playing = null;
+        this.queue = null;
     }
     resume() {
         this.dispatcher.resume();
@@ -224,13 +222,10 @@ class Player {
         this.dispatcher.pause();
     }
     skip() {
-        this.actualMusic = null;
-        this.play();
+        if (this.dispatcher)
+            this.dispatcher.emit("finish");
     }
     retour() {
-        console.log(this.actualMusic.title);
-        console.log(this.queue[0]);
-        console.log(this.historique);
         this.queue.unshift(this.actualMusic);
         this.actualMusic = null;
         this.queue.unshift(this.historique.pop());
@@ -245,6 +240,44 @@ class Player {
                 console.log("Error to delete music player");
         this.send();
     }
+    getInfos() {
+        if (this.playing) {
+            return [this.actualMusic].concat(this.queue).map(m => {
+                return {
+                    title: m.title,
+                    author: m.author,
+                    minia: m.minia,
+                    length: m.length,
+                    link: m.link
+                }
+            });
+        } else
+            return {
+                Error: "No musique playing"
+            }
+    }
+    getAllInfos() {
+        if (this.playing) {
+            return [this.actualMusic].concat(this.queue).map(m => m.info);
+        } else
+            return {
+                Error: "No musique playing"
+            }
+    }
+    getAllHistoricInfos() {
+        return this.historique.map(m => m.info);
+    }
+    getHistoricInfos() {
+        return this.historique.map(m => {
+            return {
+                title: m.title,
+                author: m.author,
+                minia: m.minia,
+                length: m.length,
+                link: m.link
+            }
+        });
+    }
 }
 
 class Music {
@@ -252,7 +285,7 @@ class Music {
         this.link = link;
     }
     async getInfo() {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async(resolve, reject) => {
             this.info = await ytdl.getBasicInfo(this.link);
             this.title = this.info.videoDetails.title;
             this.author = this.info.videoDetails.author;

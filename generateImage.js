@@ -37,7 +37,13 @@ class XpStatus extends canvas.Canvas {
         //fin de l'arriere plan
 
         this.PP.src = PPUrl;
-        this.PP.onerror = (err) => console.log(err);
+        this.PP.onerror = (err) => {
+            if (err.message == "Server responded with 404") {
+                this.PP.src = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbm5YPcN3rH-wMEiWDeOWVbCWjz6D5Ta4DyA";
+            }
+            else
+                console.log(err);
+        }
         this.PP.onload = () => {
             this.context.drawImage(this.PP, 0, 0, 200, 200);
             this.context.restore();
