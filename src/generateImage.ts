@@ -1,5 +1,5 @@
 import canvas from "canvas";
-import { user } from "./costa_utils";
+import { user } from "./utils";
 
 export class XpStatus extends canvas.Canvas {
   private context: canvas.CanvasRenderingContext2D;

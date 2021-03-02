@@ -10,7 +10,7 @@ import express from "express";
 
 import MusicPlayer from "./music";
 import * as GenerateImage from "./generateImage";
-import * as costa_utils from "./costa_utils";
+import * as costa_utils from "./utils";
 import server from "./server";
 
 import config from "./data/config.json";

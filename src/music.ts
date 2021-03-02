@@ -3,7 +3,7 @@ import ytdl from "ytdl-core";
 import { scrapePlaylist } from "youtube-playlist-scraper";
 import { getUrlfromText } from "tts-googlehome";
 import { EventEmitter } from "events";
-import * as costa_utils from "./costa_utils";
+import * as costa_utils from "./utils";
 
 export default class Player extends EventEmitter {
   queue: Music[] = [];
