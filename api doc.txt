@@ -1,0 +1,52 @@
+GET:
+/musics/infos:
+Envoie les infos basiques sur la liste de lecture et la musique actuelle
+
+/musics/historic/infos:
+Envoie les infos basiques sur l'historique de lecture
+
+/musics/all/infos:
+Envoie les infos basiques sur toutes les musiques (historique + musique actuelle + liste de lecture)
+
+/musics/infos/all:
+Envoie les infos completes sur la liste de lecture et la musique actuelle
+
+/musics/historic/infos/all:
+Envoie les infos completes sur l'historique de lecture
+
+/musics/all/infos/all:
+Envoie les infos completes sur toutes les musiques (historique + musique actuelle + liste de lecture)
+
+
+POST:
+/music/send:
+Envoie le lecteur de musique dans un channel text
+Body:
+autoconnect: boolean qui indique si CostaBot va se connecter dans un voiceChannel automatiquement (default: false)
+textChannel: l'id du channel text où le lecteur de musique sera envoyé (si il n'est pas précisé, le channel par défaut sera utilisé)
+voiceChannel : l'id du channel vocal où CostaBot se connectera (si il n'est pas précisé, le channel par défaut sera utilisé)
+
+/music/connect:
+Connecte CostaBot a un channel vocal
+Options:
+voiceChannel : l'id du channel vocal où CostaBot se connectera (si il n'est pas précisé, le channel par défaut sera utilisé)
+
+/music/disconnect:
+Deconnecte CostaBot du salon vocal
+
+/music/stop:
+Deconnecte CostaBot du salon vocal et supprime le message (comme le carre)
+
+/music/skip:
+skip la musique actuelle
+
+/music/previous:
+retour a la musique precedente
+
+/music/play:
+lance la musique
+
+/music/add:
+Ajoute une/des musique(s) a la liste de lecture
+Body:
+link: lien youtube d'une video ou d'une playlist
