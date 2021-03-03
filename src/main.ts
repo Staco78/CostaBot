@@ -12,6 +12,7 @@ import MusicPlayer from "./music";
 import * as GenerateImage from "./generateImage";
 import * as costa_utils from "./utils";
 import server from "./server";
+import Giveway from "./giveway";
 
 import config from "./data/config.json";
 import commandes from "./data/commandes.json";
@@ -32,7 +33,6 @@ import commandes from "./data/commandes.json";
 
   let WS: WebSocket;
   let ActualMusicPlayer: MusicPlayer;
-  // let giveway;
 
   let logs: costa_utils.log[] = [];
 
@@ -609,13 +609,7 @@ import commandes from "./data/commandes.json";
   };
 
   all.giveway = async (mess: Discord.Message) => {
-    // if (giveway)
-    //     giveway.destroy();
-    // giveway = new Giveway(mess, await db.find({}).toArray()).on("end", (users, xp) => {
-    //     users.forEach(async (user) => {
-    //         await addXp(user.id, Infinity, xp);
-    //     });
-    // });
+    new Giveway(mess, db, addXp)
   };
 
   all.startBot();

@@ -196,7 +196,11 @@ export default class Player extends EventEmitter {
         "Pas de musique en file d'attente, c'est triste...",
         "fr-FR"
       );
-      if (this.connection) this.connection.play(url);
+      if (this.connection) {
+        this.dispatcher?.setVolume(30);
+        this.connection.play(url);
+        this.dispatcher?.setVolume(this.volume);
+      }
       return;
     }
     if (this.actualMusic) {
