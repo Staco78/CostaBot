@@ -13,6 +13,7 @@ A discord bot
 
 [Git](https://git-scm.com/downloads)
 
+A [MongoDb](https://www.mongodb.com/) session (local or cloud)
 
 ## Installation
 
