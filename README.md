@@ -30,7 +30,7 @@ Make a config.json at out/config.json like
 {
     "token": "[Your discord bot token]",
     "keyWord": "costa",
-    "dmTo": "[discord id who dm]",
+    "dmTo": "[discord id to send DM]",
     "xp": {
         "text": {
             "min": 5,
