@@ -20,7 +20,8 @@ A discord bot
 ``` bash
 git clone https://github.com/Staco78/CostaBot.git
 cd CostaBot
-npm install
+npm i -g typescript
+npm run restart
 ```
 
 Make a config.json at out/config.json like
