@@ -1,5 +1,6 @@
 import canvas from "canvas";
 import { user } from "./utils";
+import { error } from "./logger";
 
 export class XpStatus extends canvas.Canvas {
   private context: canvas.CanvasRenderingContext2D;
@@ -51,7 +52,7 @@ export class XpStatus extends canvas.Canvas {
       if (err.message == "Server responded with 404") {
         this.PP.src =
           "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbm5YPcN3rH-wMEiWDeOWVbCWjz6D5Ta4DyA";
-      } else console.log(err);
+      } else error(err);
     };
     this.PP.onload = () => {
       this.context.drawImage(this.PP, 0, 0, 200, 200);

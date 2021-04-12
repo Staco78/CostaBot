@@ -1,0 +1,213 @@
+[{
+        "name": "Test",
+        "description": "Provoque un test (et oui !)",
+        "cmd": "test",
+        "action": "test",
+        "masked": false,
+        "access": "",
+        "regExp": "test"
+    },
+    {
+        "name": "Aide",
+        "description": "affiche l'aide",
+        "cmd": "aide moi",
+        "action": "help",
+        "masked": false,
+        "access": "",
+        "regExp": "aide\\s+moi"
+    },
+    {
+        "name": "Montre mon xp",
+        "description": "Affiche votre xp",
+        "cmd": "montre mon xp",
+        "action": "send_m_xp",
+        "masked": false,
+        "access": "",
+        "regExp": "montre\\s+mon\\s+xp"
+    },
+    {
+        "name": "Montre mon xp",
+        "description": "Affiche votre xp",
+        "cmd": "mon xp",
+        "action": "send_m_xp",
+        "masked": true,
+        "access": "",
+        "regExp": "mon\\s+xp"
+    },
+    {
+        "name": "Montre l'xp de @cible",
+        "description": "Affiche l'xp de @cible",
+        "cmd": "montre xp de @cible",
+        "action": "send_xp_of",
+        "masked": false,
+        "access": "",
+        "regExp": "montre\\s+xp\\s+de\\s+(<@\\S+>(\\s|)+)+"
+    },
+    {
+        "name": "Montre l'xp de @cible",
+        "description": "Affiche l'xp de @cible",
+        "cmd": "xp de @cible",
+        "action": "send_xp_of",
+        "masked": true,
+        "access": "",
+        "regExp": "xp\\s+de\\s+(<@\\S+>(\\s|)+)+"
+    },
+    {
+        "name": "Reset l'xp de @cible",
+        "description": "Remet l'xp de @cible à 0",
+        "cmd": "reset @cible",
+        "action": "xp_reset",
+        "masked": false,
+        "access": "ADMINISTRATOR",
+        "regExp": "reset\\s+(<@\\S+>(\\s|)+)+"
+    },
+    {
+        "name": "Télecharge LIEN_YOUTUBE en FORMAT",
+        "description": "Converti le LIEN_YOUTUBE youtube au FORMAT et renvoie un lien de telechargement",
+        "cmd": "download LIEN_YOUTUBE en FORMAT",
+        "action": "download",
+        "masked": false,
+        "access": "",
+        "regExp": "(download|dl)\\s*"
+    },
+    {
+        "name": "spam",
+        "description": "",
+        "cmd": "spam @cible",
+        "action": "spam",
+        "masked": true,
+        "access": "ADMINISTRATOR",
+        "regExp": "spam\\s+(<@\\S+>(\\s|)+)+"
+    },
+    {
+        "name": "help admin",
+        "description": "Donne la liste des commandes administrateurs",
+        "cmd": "admin",
+        "action": "help_admin",
+        "masked": true,
+        "access": "ADMINISTRATOR",
+        "regExp": "admin"
+    },
+    {
+        "name": "Add xp",
+        "description": "Ajoute de l'xp à @cible",
+        "cmd": "add xp @cible NOMBRE",
+        "action": "add_xp",
+        "masked": false,
+        "access": "ADMINISTRATOR",
+        "regExp": "add\\s+xp\\s+(<@\\S+>)\\s+[0-9]+"
+    },
+    {
+        "name": "Set xp",
+        "description": "Definie l'xp de @cible",
+        "cmd": "set xp @cible NOMBRE",
+        "action": "set_xp",
+        "masked": false,
+        "access": "ADMINISTRATOR",
+        "regExp": "set\\s+xp\\s+(<@\\S+>)\\s+[0-9]+"
+    },
+    {
+        "name": "Affiche classement",
+        "description": "Affiche le classement des gens du serveur",
+        "cmd": "classement",
+        "action": "classement",
+        "masked": false,
+        "access": "",
+        "regExp": "classement"
+    },
+    {
+        "name": "TA GUEULE",
+        "description": "TA GUEULE",
+        "cmd": "ta gueule",
+        "action": "ta_gueule",
+        "masked": true,
+        "access": "",
+        "regExp": "ta\\s+gueule"
+    },
+    {
+        "name": "Random",
+        "description": "Renvoie un nombre au hasard entre 1 et 10",
+        "cmd": "random",
+        "action": "random",
+        "masked": false,
+        "access": "",
+        "regExp": "random((\\s+[0-9]*){1, 2})?"
+    },
+    {
+        "name": "Qr code",
+        "description": "envoie un qr code",
+        "cmd": "qr PHRASE",
+        "action": "qr",
+        "masked": false,
+        "access": "",
+        "regExp": "qr\\s+.+"
+    },
+    {
+        "name": "Avatar",
+        "description": "Donne votre avatar ou celui de @cible",
+        "cmd": "avatar @cible",
+        "action": "avatar",
+        "masked": false,
+        "access": "",
+        "regExp": "avatar\\s*(<@\\S+>)*"
+    },
+    {
+        "name": "Telechargement minia ytb",
+        "description": "Renvoie la miniature de la video ytb en lien",
+        "cmd": "minia LIEN",
+        "action": "dl_minia",
+        "masked": false,
+        "access": "",
+        "regExp": "minia\\s+http(.*):\\/\\/www.youtube.com/watch\\?v=\\S+"
+    },
+    {
+        "name": "Musique",
+        "description": "Lance le lecteur de musique",
+        "cmd": "musique LIEN",
+        "action": "music",
+        "masked": false,
+        "access": "",
+        "regExp": "musique\\s*(http(.*):\\/\\/www.youtube.com/watch\\?v=\\S+)?\\s*$"
+    },
+    {
+        "name": "Musique add",
+        "description": "ajoute la musique sur la liste de lecture",
+        "cmd": "musique add LIEN",
+        "action": "music_add",
+        "masked": true,
+        "access": "",
+        "regExp": "musique\\s+add\\s*"
+    },
+    {
+        "name": "Musique resend",
+        "description": "Renvoie le lecteur de musique (ne le recre pas: renvoie le meme)",
+        "cmd": "musique resend",
+        "action": "music_resend",
+        "masked": false,
+        "access": "",
+        "regExp": "musique\\s+resend\\s*$"
+    },
+    {
+        "name": "Giveway",
+        "description": "Declenche un tirage au sort pour gagner de l'xp",
+        "cmd": "giveway NOMBRE_DE_GAGNANTS NOMBRE_D'XP",
+        "action": "giveway",
+        "masked": false,
+        "access": "ADMINISTRATOR",
+        "regExp": "giveway\\s*"
+    },
+    {
+        "name": "Radio",
+        "description": "Allume la radio",
+        "cmd": "radio LINK",
+        "action": "radio",
+        "masked": false,
+        "access": "",
+        "regExp": "radio\\s*"
+    },
+    {
+        "action": "radio_stop",
+        "masked": true,
+        "regExp": "radio\\s+stop"
+    }
+]
