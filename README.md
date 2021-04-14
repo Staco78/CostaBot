@@ -77,7 +77,7 @@ Make a config.json at out/config.json like
         "root": "[Path to the folder]"
     },
     "mongoDb": {
-        "uri": "mongodb://localhost:27017/" // link to mongodb
+        "uri": "mongodb://localhost:27017/"
     },
     "ffmpegPath": "./ffmpeg.exe"
 }

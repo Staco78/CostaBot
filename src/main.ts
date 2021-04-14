@@ -9,6 +9,7 @@ import os_utils from "node-os-utils";
 // @ts-ignore
 import Process_info from "process-infos";
 import express from "express";
+import { google } from "googleapis";
 
 import MusicPlayer from "./music";
 import * as GenerateImage from "./generateImage";
@@ -42,6 +43,9 @@ import commandes from "./data/commandes.json";
 	let appConnection = new appSocket(bot);
 
 	let logs: costa_utils.log[] = [];
+
+	google.options({ auth: config.google_api_key });
+	const Youtube = google.youtube("v3");
 
 	//gestion des commandes discord
 	bot.on("message", async mess => {
@@ -494,7 +498,38 @@ import commandes from "./data/commandes.json";
 
 		if (link) ActualMusicPlayer.add(link);
 		else if (list) ActualMusicPlayer.add_playlist(list);
-		else mess.channel.send("Erreur: aucun lien trouvé");
+		else {
+			let words: string[] = mess.content
+				.slice(mess.content.lastIndexOf("add search") + "add search".length, mess.content.length)
+				.split(" ")
+				.filter(s => s != "" && !s.includes("--"));
+			Youtube.search
+				.list(
+					mess.content.includes("--allCategories")
+						? {
+								part: ["id"],
+								maxResults: 1,
+								q: words.join(" "),
+								type: ["video"],
+						  }
+						: {
+								part: ["id"],
+								maxResults: 1,
+								q: words.join(" "),
+								type: ["video"],
+								videoCategoryId: "10",
+						  }
+				)
+				.then(r => {
+					try {
+						ActualMusicPlayer?.add(`https://youtube.com/watch?v=${r.data.items?.[0].id?.videoId}`);
+					}
+					catch(e) {
+						mess.channel.send("Aucune vidéo trouvée");
+					}
+
+				});
+		}
 	};
 
 	all.music_resend = (mess: Discord.Message) => {
@@ -524,11 +559,11 @@ import commandes from "./data/commandes.json";
 	};
 
 	all.radio_stop = (mess: Discord.Message) => {
-		if (actualRadio){
+		if (actualRadio) {
 			actualRadio.stop();
 			actualRadio = undefined;
-		}
-	}
+		} else mess.channel.send("Pas de radio en cours");
+	};
 
 	all.startBot();
 	if (config.server.active) server();
@@ -636,11 +671,16 @@ import commandes from "./data/commandes.json";
 		});
 		app.get("/musics/historic/infos", (req, res) => {
 			if (ActualMusicPlayer) res.status(200).json(ActualMusicPlayer.getHistoricInfos());
-			else res.status(200).json({ Error: "No music player" });
+			else res.status(400).json({ Error: "No music player" });
 		});
 		app.get("/musics/all/infos", (req, res) => {
 			if (ActualMusicPlayer) res.status(200).json(ActualMusicPlayer.getHistoricInfos().concat(ActualMusicPlayer.getInfos() as any));
-			else res.status(200).json({ Error: "No music player" });
+			else res.status(400).json({ Error: "No music player" });
+		});
+
+		app.get("/radio", (req, res) => {
+			if (actualRadio) res.status(200).json({ link: actualRadio.url.toString() });
+			else res.status(400).json({ Error: "No radio playing" });
 		});
 
 		//POST
@@ -750,6 +790,34 @@ import commandes from "./data/commandes.json";
 				else res.status(400).json({ Error: "Any link specified" });
 			else res.status(400).json({ Error: "No music player" });
 		});
+
+		app.post("/radio/stop", (req, res) => {
+			if (actualRadio) {
+				actualRadio.stop();
+				actualRadio = undefined;
+				res.status(200).end();
+			} else res.status(400).json({ Error: "No radio playing" });
+		});
+
+		app.post("/radio", (req, res) => {
+			let link = req.body.link || "https://str2b.openstream.co/1369";
+			let channel = bot.channels.cache.get(req.body.channel) || (bot.channels.cache.get(config.api.music.defaultVoiceChannel) as Discord.Channel);
+			let force = req.body.force === "true" || req.body.force === true;
+
+			if (force && ActualMusicPlayer) ActualMusicPlayer.destroy();
+			if (ActualMusicPlayer) {
+				res.status(400).json({ Error: "Unable to play radio: music already connected" });
+				return;
+			}
+			if (channel instanceof Discord.VoiceChannel) {
+				actualRadio = new Radio(link, channel);
+				actualRadio.connect().then(() => {
+					(actualRadio as any).play();
+					res.status(200).json({ link: link });
+				});
+			} else res.status(400).json({ Error: "Invalid channel" });
+		});
+
 		app.all("*", (req, res) => {
 			res.status(404).end();
 		});

@@ -19,6 +19,7 @@ export default class Player extends EventEmitter {
 	private message: Discord.MessageEmbed | undefined;
 	private messContent: string;
 	private sentMess: Discord.Message | undefined;
+	private m_loop = false;
 
 	constructor(mess: Discord.Message | Discord.TextChannel, messContent = "", send = true) {
 		super();
@@ -216,7 +217,6 @@ export default class Player extends EventEmitter {
 			this.playing = false;
 			this.historique.push(this.actualMusic as Music);
 			this.actualMusic = undefined;
-			logger.log("musique suivante");
 			this.play();
 		});
 	}

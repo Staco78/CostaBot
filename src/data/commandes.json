@@ -3,7 +3,7 @@
         "description": "Provoque un test (et oui !)",
         "cmd": "test",
         "action": "test",
-        "masked": false,
+        "masked": true,
         "access": "",
         "regExp": "test"
     },
@@ -197,6 +197,13 @@
         "regExp": "giveway\\s*"
     },
     {
+        "action": "radio_stop",
+        "name": "Radio stop",
+        "masked": true,
+        "regExp": "radio\\s+stop",
+        "access": ""
+    },
+    {
         "name": "Radio",
         "description": "Allume la radio",
         "cmd": "radio LINK",
@@ -204,10 +211,5 @@
         "masked": false,
         "access": "",
         "regExp": "radio\\s*"
-    },
-    {
-        "action": "radio_stop",
-        "masked": true,
-        "regExp": "radio\\s+stop"
     }
 ]
