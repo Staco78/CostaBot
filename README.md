@@ -22,6 +22,7 @@ A [MongoDb](https://www.mongodb.com/) session (local or cloud)
 git clone https://github.com/Staco78/CostaBot.git
 cd CostaBot
 npm i -g typescript
+npm i
 npm run build
 ```
 
