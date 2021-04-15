@@ -523,11 +523,9 @@ import commandes from "./data/commandes.json";
 				.then(r => {
 					try {
 						ActualMusicPlayer?.add(`https://youtube.com/watch?v=${r.data.items?.[0].id?.videoId}`);
-					}
-					catch(e) {
+					} catch (e) {
 						mess.channel.send("Aucune vidéo trouvée");
 					}
-
 				});
 		}
 	};
@@ -571,10 +569,23 @@ import commandes from "./data/commandes.json";
 	setInterval(() => {
 		bot.users.cache.forEach(user => {
 			let member = bot.guilds.cache.array()[0].member(user.id);
-			if (member) if (member.voice) if (member.voice.channel) addXp(user.id, Infinity, randomInt(config.xp.voc.min, config.xp.voc.max));
+			if (member)
+				if (member.voice)
+					if (member.voice.channel)
+						if (member.voice.channelID != member.guild.afkChannelID)
+							if (
+								member.voice.channel.members.size > 1 &&
+								!(
+									member.voice.channel.members.size === 2 &&
+									member.voice.channel.members.filter(m => m != member).array()[0].user.bot
+								)
+							)
+								if (!member.voice.selfMute && !member.voice.serverMute && !member.voice.mute)
+									if (!member.voice.selfDeaf && !member.voice.serverDeaf && !member.voice.deaf) {
+										addXp(user.id, Infinity, randomInt(config.xp.voc.min, config.xp.voc.max));
+									}
 		});
-	}, 60000);
-
+	}, 10000);
 	//ws
 	if (config.interface.active) {
 		let interfaceWss = new WebSocket.Server({ port: config.interface.port });
